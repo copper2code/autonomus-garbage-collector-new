@@ -1,0 +1,24 @@
+# ─────────────────────────────────────────────────────────
+# Raspberry Pi Garbage-Collector Robot — Python Requirements
+# Install with:  pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────
+
+# Web server & API
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Serial communication with Arduinos
+pyserial>=3.5
+
+# Computer vision
+opencv-python-headless>=4.9.0   # headless = no GUI deps (good for Pi)
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# Machine learning (PyTorch — use ARM/Pi wheels from pytorch.org)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Utilities
+tqdm>=4.65.0         # training progress bars
+matplotlib>=3.7.0    # optional: plot training curves
