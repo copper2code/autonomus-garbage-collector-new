@@ -1,4 +1,4 @@
-<![CDATA[<!-- PROJECT LOGO -->
+<!-- PROJECT LOGO -->
 <br />
 <p align="center">
   <h1 align="center">🤖 Autonomous Garbage Collector Robot</h1>
@@ -41,7 +41,7 @@
 
 ## About The Project
 
-![Product Name Screen Shot][product-screenshot]
+
 
 This project builds a fully autonomous mobile robot capable of:
 
@@ -522,8 +522,3 @@ Project Link: [https://github.com/rakesh-i/ESP32-Autonomous-car](https://github.
 * [Sentdex — GTA V Autonomous Vehicle Series](https://github.com/Sentdex/pygta5)
 
 ---
-
-<!-- MARKDOWN LINKS & IMAGES -->
-[product-screenshot]: media/img.jpg
-[opencvtrack]: media/visiontrack.png
-]]>
