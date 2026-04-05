@@ -12,7 +12,7 @@ Servo clampServo;
 
 // ---------------- STEPPER STATE ----------------
 struct StepperState {
-  const int* pins;
+  int pins[4];          // <-- fixed array instead of pointer
   int stepIndex;
   int stepsRemaining;
   int dir;
@@ -20,9 +20,9 @@ struct StepperState {
   int stepDelay;
 };
 
-StepperState base  = {BASE_PINS, 0, 0, 1, 0, 3};
-StepperState joint = {JOINT_PINS, 0, 0, 1, 0, 3};
-StepperState ext   = {EXT_PINS, 0, 0, 1, 0, 3};
+StepperState base  = {{2,3,4,5},   0, 0, 1, 0, 3};
+StepperState joint = {{6,7,8,9},   0, 0, 1, 0, 3};
+StepperState ext   = {{10,11,12,13}, 0, 0, 1, 0, 3};
 
 // Half-step sequence
 const int stepsMatrix[8][4] = {
@@ -40,9 +40,9 @@ void setup() {
     pinMode(EXT_PINS[i], OUTPUT);
   }
 
-  disableCoils(BASE_PINS);
-  disableCoils(JOINT_PINS);
-  disableCoils(EXT_PINS);
+  disableCoils(base.pins);
+  disableCoils(joint.pins);
+  disableCoils(ext.pins);
 
   clampServo.attach(SERVO_PIN);
   clampServo.write(10);
@@ -99,7 +99,7 @@ void handleSerial() {
     }
 
     else if (strcmp(cmd, "clamp") == 0) {
-      int angle = constrain(doc["angle"], 10, 120);
+      int angle = constrain((int)doc["angle"], 10, 120);
       clampServo.write(angle);
       Serial.println(F("{\"status\":\"ok\"}"));
     }
@@ -112,7 +112,7 @@ void updateStepper(StepperState &s) {
 
   unsigned long now = millis();
 
-  if (now - s.lastStepTime >= s.stepDelay) {
+  if (now - s.lastStepTime >= (unsigned long)s.stepDelay) {
     s.lastStepTime = now;
 
     for (int i = 0; i < 4; i++) {
@@ -133,7 +133,7 @@ void updateStepper(StepperState &s) {
 }
 
 // ---------------- DISABLE COILS ----------------
-void disableCoils(const int* pins) {
+void disableCoils(int* pins) {     // <-- removed const
   for (int i = 0; i < 4; i++) {
     digitalWrite(pins[i], LOW);
   }
