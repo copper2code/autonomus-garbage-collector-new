@@ -1,121 +1,140 @@
 #include <ArduinoJson.h>
 #include <Servo.h>
 
-// ------------------------------------------------------------------
-// PINS CONFIGURATION
-// ------------------------------------------------------------------
-// Base Stepper
-const int BASE_PINS[4] = {2, 3, 4, 5};
-// Joint Stepper
+// ---------------- PIN CONFIG ----------------
+const int BASE_PINS[4]  = {2, 3, 4, 5};
 const int JOINT_PINS[4] = {6, 7, 8, 9};
-// Extension Stepper
-const int EXT_PINS[4] = {10, 11, 12, 13};
+const int EXT_PINS[4]   = {10, 11, 12, 13};
 
-// Clamp Servo
 const int SERVO_PIN = A0;
 
 Servo clampServo;
 
-// ULN2003 half-step sequence
-const int stepsMatrix[8][4] = {
-  {1, 0, 0, 0},
-  {1, 1, 0, 0},
-  {0, 1, 0, 0},
-  {0, 1, 1, 0},
-  {0, 0, 1, 0},
-  {0, 0, 1, 1},
-  {0, 0, 0, 1},
-  {1, 0, 0, 1}
+// ---------------- STEPPER STATE ----------------
+struct StepperState {
+  const int* pins;
+  int stepIndex;
+  int stepsRemaining;
+  int dir;
+  unsigned long lastStepTime;
+  int stepDelay;
 };
 
-const int stepDelay = 3; // ms delay between steps
+StepperState base  = {BASE_PINS, 0, 0, 1, 0, 3};
+StepperState joint = {JOINT_PINS, 0, 0, 1, 0, 3};
+StepperState ext   = {EXT_PINS, 0, 0, 1, 0, 3};
 
+// Half-step sequence
+const int stepsMatrix[8][4] = {
+  {1,0,0,0},{1,1,0,0},{0,1,0,0},{0,1,1,0},
+  {0,0,1,0},{0,0,1,1},{0,0,0,1},{1,0,0,1}
+};
+
+// ---------------- SETUP ----------------
 void setup() {
   Serial.begin(115200);
 
-  // Initialize Stepper Pins
   for (int i = 0; i < 4; i++) {
     pinMode(BASE_PINS[i], OUTPUT);
     pinMode(JOINT_PINS[i], OUTPUT);
     pinMode(EXT_PINS[i], OUTPUT);
   }
-  
-  // Disable coils initially to prevent heating
+
   disableCoils(BASE_PINS);
   disableCoils(JOINT_PINS);
   disableCoils(EXT_PINS);
 
-  // Initialize Servo
   clampServo.attach(SERVO_PIN);
-  clampServo.write(10); // Start open
+  clampServo.write(10);
 }
 
+// ---------------- MAIN LOOP ----------------
 void loop() {
-  if (Serial.available() > 0) {
+  handleSerial();
+  updateStepper(base);
+  updateStepper(joint);
+  updateStepper(ext);
+}
+
+// ---------------- SERIAL HANDLER ----------------
+void handleSerial() {
+  if (Serial.available()) {
     String jsonStr = Serial.readStringUntil('\n');
-    
+
     StaticJsonDocument<256> doc;
-    DeserializationError error = deserializeJson(doc, jsonStr);
-    
-    if (error) {
-      Serial.println(F("{\"status\": \"error\", \"msg\": \"invalid json\"}"));
+    if (deserializeJson(doc, jsonStr)) {
+      Serial.println(F("{\"status\":\"error\",\"msg\":\"bad json\"}"));
       return;
     }
-    
+
     const char* cmd = doc["cmd"];
-    
+
     if (strcmp(cmd, "arm") == 0) {
       const char* motor = doc["motor"];
       int steps = doc["steps"];
-      int dir = doc["dir"]; // 1 forward, 0 backward
-      
-      const int* targetPins = NULL;
-      
-      if (strcmp(motor, "base") == 0) targetPins = BASE_PINS;
-      else if (strcmp(motor, "joint") == 0) targetPins = JOINT_PINS;
-      else if (strcmp(motor, "ext") == 0) targetPins = EXT_PINS;
-      
-      if (targetPins != NULL) {
-        moveStepper(targetPins, steps, dir);
-        Serial.println(F("{\"status\": \"ok\"}"));
-      } else {
-        Serial.println(F("{\"status\": \"error\", \"msg\": \"unknown motor\"}"));
+      int dir   = doc["dir"];
+      int speed = doc["speed"] | 3;
+
+      if (steps <= 0 || (dir != 0 && dir != 1)) {
+        Serial.println(F("{\"status\":\"error\",\"msg\":\"invalid params\"}"));
+        return;
       }
-      
-    } else if (strcmp(cmd, "clamp") == 0) {
-      int angle = doc["angle"];
+
+      StepperState* target = NULL;
+
+      if (strcmp(motor, "base") == 0) target = &base;
+      else if (strcmp(motor, "joint") == 0) target = &joint;
+      else if (strcmp(motor, "ext") == 0) target = &ext;
+
+      if (target == NULL) {
+        Serial.println(F("{\"status\":\"error\",\"msg\":\"unknown motor\"}"));
+        return;
+      }
+
+      target->stepsRemaining = steps;
+      target->dir = dir;
+      target->stepDelay = constrain(speed, 1, 10);
+
+      Serial.println(F("{\"status\":\"ok\"}"));
+    }
+
+    else if (strcmp(cmd, "clamp") == 0) {
+      int angle = constrain(doc["angle"], 10, 120);
       clampServo.write(angle);
-      // Let the servo physically move
-      delay(300); 
-      Serial.println(F("{\"status\": \"ok\"}"));
+      Serial.println(F("{\"status\":\"ok\"}"));
     }
   }
 }
 
-void moveStepper(const int* motorPins, int totalSteps, int dir) {
-  int stepIndex = 0;
-  for (int i = 0; i < totalSteps; i++) {
-    for (int pin = 0; pin < 4; pin++) {
-      digitalWrite(motorPins[pin], stepsMatrix[stepIndex][pin]);
+// ---------------- STEPPER UPDATE ----------------
+void updateStepper(StepperState &s) {
+  if (s.stepsRemaining <= 0) return;
+
+  unsigned long now = millis();
+
+  if (now - s.lastStepTime >= s.stepDelay) {
+    s.lastStepTime = now;
+
+    for (int i = 0; i < 4; i++) {
+      digitalWrite(s.pins[i], stepsMatrix[s.stepIndex][i]);
     }
-    
-    delay(stepDelay);
-    
-    if (dir == 1) {
-      stepIndex++;
-      if (stepIndex > 7) stepIndex = 0;
-    } else {
-      stepIndex--;
-      if (stepIndex < 0) stepIndex = 7;
+
+    if (s.dir == 1)
+      s.stepIndex = (s.stepIndex + 1) % 8;
+    else
+      s.stepIndex = (s.stepIndex - 1 + 8) % 8;
+
+    s.stepsRemaining--;
+
+    if (s.stepsRemaining == 0) {
+      disableCoils(s.pins);
     }
   }
-  
-  // Power off coils when idle to prevent overheating 28BYJ-48
-  disableCoils(motorPins);
 }
 
-void disableCoils(const int* motorPins) {
-  for (int pin = 0; pin < 4; pin++) {
-    digitalWrite(motorPins[pin], LOW);
+// ---------------- DISABLE COILS ----------------
+void disableCoils(const int* pins) {
+  for (int i = 0; i < 4; i++) {
+    digitalWrite(pins[i], LOW);
   }
 }
