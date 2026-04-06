@@ -64,9 +64,9 @@ def main():
     def signal_handler(sig, frame):
         logger.info("Shutting down...")
         state.running = False
-        state.motors.stop()
-        state.camera.stop()
-        state.serial.close_all()
+        if state.motors: state.motors.stop()
+        if state.camera: state.camera.stop()
+        if state.serial: state.serial.close_all()
         sys.exit(0)
         
     signal.signal(signal.SIGINT, signal_handler)

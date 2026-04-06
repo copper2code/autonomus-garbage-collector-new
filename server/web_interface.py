@@ -2,6 +2,7 @@ from flask import Flask, render_template, Response, request, jsonify
 from flask_cors import CORS
 import logging
 import threading
+import time
 
 import config
 from ml.training_pipeline import train_driving_model_in_background
@@ -48,6 +49,7 @@ class WebServer:
                     if frame_bytes:
                         yield (b'--frame\r\n'
                                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                    time.sleep(0.05)  # Prevent CPU pegged at 100% on Raspberry Pi
             return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
             
         @self.app.route('/control/car', methods=['POST'])
