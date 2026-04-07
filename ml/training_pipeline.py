@@ -14,6 +14,10 @@ import config
 
 logger = logging.getLogger(__name__)
 
+# Optimize PyTorch for Pi 4B quad-core ARM Cortex-A72
+torch.set_num_threads(4)
+
+
 # Reusable lightweight CNN architecture
 class CompactCNN(nn.Module):
     def __init__(self, num_classes):
@@ -79,9 +83,9 @@ def train_driving_model_in_background(shared_state):
         shared_state.training_progress = 0
         logger.info("Starting background training of Driving Model...")
         
-        device = torch.device('cpu') # Prefer CPU on Pi to prevent memory issues for lightweight tasks
+        device = torch.device('cpu')  # Pi 4B: CPU only
         epochs = 10
-        batch_size = 16
+        batch_size = 8       # Pi 4B has 4GB RAM — smaller batches are safer
         lr = 0.001
         
         transform = transforms.Compose([
@@ -97,7 +101,7 @@ def train_driving_model_in_background(shared_state):
             shared_state.training_status = "error_no_data"
             return
             
-        loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=0)
         model = CompactCNN(num_classes=len(config.DRIVING_CLASSES)).to(device)
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=lr)
@@ -105,29 +109,35 @@ def train_driving_model_in_background(shared_state):
         if not os.path.exists(config.MODELS_DIR):
             os.makedirs(config.MODELS_DIR)
             
-        for epoch in range(epochs):
-            model.train()
-            running_loss = 0.0
-            
-            for inputs, labels in loader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                optimizer.zero_grad()
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
-                running_loss += loss.item()
+        try:
+            for epoch in range(epochs):
+                model.train()
+                running_loss = 0.0
                 
-            shared_state.training_progress = int(((epoch + 1) / epochs) * 100)
-            logger.info(f"Training Driving Epoch {epoch+1}/{epochs} - Loss: {running_loss/len(loader):.4f}")
+                for inputs, labels in loader:
+                    inputs, labels = inputs.to(device), labels.to(device)
+                    optimizer.zero_grad()
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
+                    loss.backward()
+                    optimizer.step()
+                    running_loss += loss.item()
+                    
+                shared_state.training_progress = int(((epoch + 1) / epochs) * 100)
+                logger.info(f"Training Driving Epoch {epoch+1}/{epochs} - Loss: {running_loss/len(loader):.4f}")
+                
+            torch.save(model.state_dict(), config.DRIVING_MODEL)
+            logger.info(f"✓ Driving model saved to {config.DRIVING_MODEL}")
             
-        torch.save(model.state_dict(), config.DRIVING_MODEL)
-        logger.info(f"Driving model successfully saved to {config.DRIVING_MODEL}")
-        
-        shared_state.training_status = "done"
-        
-        # Reload model directly in the vision parser without restart
-        shared_state.dual_inference.reload_driving_model()
-        
+            shared_state.training_status = "done"
+            
+            # Reload model directly in the vision parser without restart
+            if shared_state.dual_inference:
+                shared_state.dual_inference.reload_driving_model()
+                
+        except Exception as e:
+            logger.error(f"Training failed: {e}")
+            shared_state.training_status = "error"
+
     t = threading.Thread(target=worker, daemon=True)
     t.start()

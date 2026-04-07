@@ -1,6 +1,20 @@
 # ─────────────────────────────────────────────────────────
-# Raspberry Pi Garbage-Collector Robot — Python Requirements
-# Install with:  pip install -r requirements.txt
+# Raspberry Pi 4B Garbage-Collector Robot — Python Requirements
+# ─────────────────────────────────────────────────────────
+#
+# INSTALL INSTRUCTIONS (Raspberry Pi 4B — ARM64 / aarch64):
+#   1. Run the automated installer:
+#        chmod +x install.sh && sudo ./install.sh
+#
+#   OR manually:
+#        sudo apt install -y python3-pip python3-venv libatlas-base-dev \
+#            libopenjp2-7 libtiff5 libavcodec-dev libavformat-dev \
+#            libswscale-dev libv4l-dev v4l-utils
+#        python3 -m venv venv && source venv/bin/activate
+#        pip install -U pip setuptools wheel
+#        pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#        pip install -r requirements.txt
+#
 # ─────────────────────────────────────────────────────────
 
 # Web server & API
@@ -10,15 +24,21 @@ flask-cors>=4.0.0
 # Serial communication with Arduinos
 pyserial>=3.5
 
-# Computer vision
-opencv-python-headless>=4.9.0   # headless = no GUI deps (good for Pi)
+# Computer vision (headless = no GUI deps, ideal for Pi)
+opencv-python-headless>=4.8.0
 numpy>=1.24.0
 Pillow>=10.0.0
 
-# Machine learning (PyTorch — use ARM/Pi wheels from pytorch.org)
-torch>=2.0.0
-torchvision>=0.15.0
+# Machine learning
+# NOTE: Install PyTorch SEPARATELY using the ARM64 wheel:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+# The lines below are for reference only (pip will skip if already installed)
+# torch>=2.0.0
+# torchvision>=0.15.0
 
 # Utilities
 tqdm>=4.65.0         # training progress bars
-matplotlib>=3.7.0    # optional: plot training curves
+
+# WiFi Hotspot management (optional — install.sh handles system-level setup)
+# psutil is used for network interface detection
+psutil>=5.9.0

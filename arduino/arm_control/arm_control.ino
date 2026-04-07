@@ -12,7 +12,7 @@ Servo clampServo;
 
 // ---------------- STEPPER STATE ----------------
 struct StepperState {
-  int pins[4];          // <-- fixed array instead of pointer
+  int pins[4];
   int stepIndex;
   int stepsRemaining;
   int dir;
@@ -29,6 +29,8 @@ const int stepsMatrix[8][4] = {
   {1,0,0,0},{1,1,0,0},{0,1,0,0},{0,1,1,0},
   {0,0,1,0},{0,0,1,1},{0,0,0,1},{1,0,0,1}
 };
+
+bool identified = false;  // Set true once Pi acknowledges us
 
 // ---------------- SETUP ----------------
 void setup() {
@@ -50,6 +52,28 @@ void setup() {
 
 // ---------------- MAIN LOOP ----------------
 void loop() {
+  // ─── IDENTIFICATION PHASE ───
+  // Continuously scream "I am the arm!" until the Pi sends an ack
+  if (!identified) {
+    Serial.println(F("{\"id\":\"arm\"}"));
+    
+    // Check if Pi responded with ack
+    if (Serial.available() > 0) {
+      String jsonStr = Serial.readStringUntil('\n');
+      StaticJsonDocument<100> doc;
+      if (!deserializeJson(doc, jsonStr)) {
+        const char* cmd = doc["cmd"];
+        if (cmd && strcmp(cmd, "ack") == 0) {
+          identified = true;
+          Serial.println(F("{\"status\":\"ok\",\"msg\":\"arm identified\"}"));
+        }
+      }
+    }
+    delay(500);  // Scream every 500ms
+    return;       // Don't process arm commands until identified
+  }
+
+  // ─── NORMAL OPERATION ───
   handleSerial();
   updateStepper(base);
   updateStepper(joint);
@@ -103,6 +127,11 @@ void handleSerial() {
       clampServo.write(angle);
       Serial.println(F("{\"status\":\"ok\"}"));
     }
+
+    // Allow re-identification if Pi sends ack again (e.g. after Pi reboot)
+    else if (strcmp(cmd, "ack") == 0) {
+      Serial.println(F("{\"status\":\"ok\",\"msg\":\"arm re-identified\"}"));
+    }
   }
 }
 
@@ -133,7 +162,7 @@ void updateStepper(StepperState &s) {
 }
 
 // ---------------- DISABLE COILS ----------------
-void disableCoils(int* pins) {     // <-- removed const
+void disableCoils(int* pins) {
   for (int i = 0; i < 4; i++) {
     digitalWrite(pins[i], LOW);
   }

@@ -1,6 +1,24 @@
-# Hardware Setup & Installation Guide
+# Hardware Setup & Installation Guide — Raspberry Pi 4B
 
-This document provides detailed hardware assembly and software installation instructions for the Autonomous Garbage Collector Robot.
+This document provides complete hardware assembly and software installation instructions for the Autonomous Garbage Collector Robot on **Raspberry Pi 4 Model B**.
+
+---
+
+## Quick Start (TL;DR)
+
+```bash
+# On a fresh Raspberry Pi 4B with Raspberry Pi OS (64-bit):
+git clone https://github.com/rakesh-i/ESP32-Autonomous-car
+cd ESP32-Autonomous-car
+chmod +x install.sh
+sudo ./install.sh
+sudo reboot
+```
+
+After reboot:
+1. Connect your phone/laptop to WiFi network **"GarbageBot"** (password: `robot1234`)
+2. Open browser → **http://192.168.4.1:5000**
+3. Done! Configure everything from the dashboard.
 
 ---
 
@@ -20,7 +38,7 @@ This document provides detailed hardware assembly and software installation inst
                 ├──→ 3× ULN2003 Boards (VCC)
                 └──→ Servo Motor (VCC, red wire)
 
-[Raspberry Pi]
+[Raspberry Pi 4B]
        │
        └──→ Powered by its own 5V/3A USB-C adapter
 ```
@@ -83,11 +101,19 @@ This document provides detailed hardware assembly and software installation inst
 ### Camera Mounting
 - Mount the USB webcam on the arm, positioned after (below) the clamp mechanism.
 - Route the USB cable along the arm and chassis, leaving slack for arm movement.
-- Plug into any USB port on the Raspberry Pi.
+- Plug into any USB port on the Raspberry Pi 4B.
 
 ---
 
 ## 2. Arduino Firmware Upload
+
+### How Auto-Identification Works
+
+Both Arduinos now **broadcast their identity on startup**:
+- **Car Arduino** continuously sends `{"id":"car"}` every 500ms
+- **Arm Arduino** continuously sends `{"id":"arm"}` every 500ms
+
+When the Raspberry Pi boots, it scans all serial ports, listens for these broadcasts, sends `{"cmd":"ack"}` to confirm each Arduino, and automatically assigns the correct port. **No manual port configuration needed!**
 
 ### Prerequisites
 - Install [Arduino IDE](https://www.arduino.cc/en/software) (v2.0+ recommended)
@@ -110,64 +136,154 @@ This document provides detailed hardware assembly and software installation inst
 4. Click Upload
 
 ### Verify
-Open Serial Monitor (115200 baud) and send:
+Open Serial Monitor (115200 baud). You should see the Arduino repeatedly printing:
 ```json
-{"cmd": "move", "dir": "forward", "speed": 100}
+{"id":"car"}
 ```
-The car motors should spin. Send `{"cmd": "move", "dir": "stop", "speed": 0}` to stop.
+or
+```json
+{"id":"arm"}
+```
+This means it's waiting for the Pi to acknowledge it. Send `{"cmd":"ack"}` and you should see `{"status":"ok","msg":"car identified"}`.
 
 ---
 
-## 3. Raspberry Pi Software Setup
+## 3. Raspberry Pi 4B Software Setup
 
-### System Prerequisites
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install python3-pip python3-venv git -y
-```
+### Option A: Automated Install (Recommended)
 
-### Project Installation
 ```bash
+# 1. Flash Raspberry Pi OS (64-bit / Bookworm) to an SD card
+# 2. Boot the Pi and connect via SSH or monitor
+# 3. Clone and install:
+
 git clone https://github.com/rakesh-i/ESP32-Autonomous-car
 cd ESP32-Autonomous-car
 
+chmod +x install.sh
+sudo ./install.sh
+```
+
+The installer will:
+- ✅ Install all system dependencies (libatlas, v4l-utils, etc.)
+- ✅ Create a Python virtual environment
+- ✅ Install PyTorch ARM64 wheel (CPU-only, optimized for Pi 4B)
+- ✅ Install all pip requirements
+- ✅ Create a WiFi hotspot (SSID: **GarbageBot**, Password: **robot1234**)
+- ✅ Set up auto-start on boot via systemd
+- ✅ Configure serial port permissions
+
+After install:
+```bash
+sudo reboot
+```
+
+### Option B: Manual Install
+
+```bash
+# System Dependencies
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3-pip python3-venv python3-dev \
+    libatlas-base-dev libopenjp2-7 libtiff5 \
+    libavcodec-dev libavformat-dev libswscale-dev \
+    libv4l-dev v4l-utils git
+
+# Clone project
+git clone https://github.com/rakesh-i/ESP32-Autonomous-car
+cd ESP32-Autonomous-car
+
+# Virtual environment
 python3 -m venv venv
 source venv/bin/activate
 
+# Install PyTorch for ARM64 (Pi 4B)
+pip install -U pip setuptools wheel
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining packages
 pip install -r requirements.txt
+
+# Run
+python main.py
 ```
 
-### Identify Arduino Ports
-With both Arduinos plugged into the Pi via USB:
+### WiFi Hotspot Setup (Standalone)
+
+If you only need to set up the hotspot separately:
 ```bash
-ls /dev/ttyUSB* /dev/ttyACM*
+chmod +x setup_hotspot.sh
+sudo ./setup_hotspot.sh GarbageBot robot1234
 ```
-You should see two ports (e.g., `/dev/ttyUSB0` and `/dev/ttyUSB1`).
-
-To identify which is which, unplug one Arduino and check which port disappears:
-```bash
-# Unplug Arduino 1 (car), check what's left
-ls /dev/ttyUSB*
-# The remaining port is Arduino 2 (arm)
-```
-
-Update `config.py` accordingly:
-```python
-CAR_SERIAL_PORT = "/dev/ttyUSB0"   # Whichever port is Arduino 1
-ARM_SERIAL_PORT = "/dev/ttyUSB1"   # Whichever port is Arduino 2
-```
-
-### Optional: Create Persistent Port Names with udev
-Create `/etc/udev/rules.d/99-robot-arduinos.rules`:
-```
-SUBSYSTEM=="tty", ATTRS{serial}=="YOUR_ARDUINO1_SERIAL", SYMLINK+="arduino_car"
-SUBSYSTEM=="tty", ATTRS{serial}=="YOUR_ARDUINO2_SERIAL", SYMLINK+="arduino_arm"
-```
-Then use `/dev/arduino_car` and `/dev/arduino_arm` in config.py.
 
 ---
 
-## 4. Running the System
+## 4. Connecting to the Robot
+
+### Via WiFi Hotspot (Primary — No SSH Needed!)
+
+1. Power on the Raspberry Pi 4B
+2. Wait ~30 seconds for boot
+3. On your phone or laptop, connect to WiFi:
+   - **Network:** `GarbageBot`
+   - **Password:** `robot1234`
+4. Open browser: **http://192.168.4.1:5000**
+5. Use the **Settings** tab to configure camera, serial ports, speeds, etc.
+
+### First-Time Setup via Dashboard
+
+1. Go to ⚙️ **Settings** tab
+2. Camera should auto-detect. Click **🔍 Scan** if not → select camera → **📸 Test**
+3. Serial ports are auto-detected via identity protocol. Check **📊 Diagnostics** to verify
+4. Go to **🔧 Arm Calibration** → click **🔄 Reset Arm to Home** to verify arm moves correctly
+5. Adjust motor speeds if needed
+6. Click **💾 Save All Settings**
+
+### Auto-Identification Flow
+
+When the Pi starts:
+```
+Pi scans /dev/ttyUSB* and /dev/ttyACM*
+  │
+  ├── Opens /dev/ttyUSB0 → listens...
+  │     Arduino 1 screams: {"id":"car"}
+  │     Pi sends: {"cmd":"ack"}
+  │     Arduino confirms: {"status":"ok","msg":"car identified"}
+  │     ✓ /dev/ttyUSB0 = Car Arduino
+  │
+  └── Opens /dev/ttyUSB1 → listens...
+        Arduino 2 screams: {"id":"arm"}
+        Pi sends: {"cmd":"ack"}
+        Arduino confirms: {"status":"ok","msg":"arm identified"}
+        ✓ /dev/ttyUSB1 = Arm Arduino
+```
+
+No more guessing which port is which!
+
+---
+
+## 5. Running the Robot
+
+### Auto-start (Default after install.sh)
+
+The robot starts automatically on boot. Manage via:
+```bash
+# Check status
+sudo systemctl status garbagebot
+
+# View logs
+sudo journalctl -u garbagebot -f
+
+# Restart
+sudo systemctl restart garbagebot
+
+# Stop
+sudo systemctl stop garbagebot
+
+# Disable auto-start
+sudo systemctl disable garbagebot
+```
+
+### Manual Start
 
 ```bash
 cd /path/to/ESP32-Autonomous-car
@@ -177,36 +293,65 @@ python main.py
 
 Expected output:
 ```
-2026-03-28 20:00:00 - INFO - Connected to Arduino on /dev/ttyUSB0
-2026-03-28 20:00:02 - INFO - Connected to Arduino on /dev/ttyUSB1
-2026-03-28 20:00:02 - INFO - Camera started on index 0
-2026-03-28 20:00:02 - INFO - Starting Web Server on 0.0.0.0:5000
+╔══════════════════════════════════════════════════╗
+║   🤖 Autonomous Garbage Collector Robot v2.0    ║
+║   Platform: Raspberry Pi 4B                      ║
+╚══════════════════════════════════════════════════╝
+
+━━━ Initializing Serial Manager ━━━
+🔍 Auto-detecting Arduinos (listening for identity broadcasts)...
+Found serial ports: ['/dev/ttyUSB0', '/dev/ttyUSB1']
+🔍 Port /dev/ttyUSB0 identifies as: CAR
+✓ CAR Arduino confirmed on /dev/ttyUSB0
+🔍 Port /dev/ttyUSB1 identifies as: ARM
+✓ ARM Arduino confirmed on /dev/ttyUSB1
+━━━ Serial Discovery Complete ━━━
+
+─── System Status ───
+  Car Arduino:  ✓ Connected (/dev/ttyUSB0)
+  Arm Arduino:  ✓ Connected (/dev/ttyUSB1)
+  Camera:       ✓ Running
+  Dashboard:    http://192.168.4.1:5000
 ```
 
-Open your browser: `http://<PI_IP>:5000`
+---
 
-### Auto-start on Boot (Optional)
-Create a systemd service:
-```bash
-sudo nano /etc/systemd/system/robot.service
-```
+## 6. Troubleshooting
 
-```ini
-[Unit]
-Description=Garbage Collector Robot
-After=network.target
+### Camera Not Working
+- Run `ls /dev/video*` to check if the webcam is detected
+- Try different camera indices in the Settings dashboard (⚙️ → Camera → Scan)
+- Some webcams need: `sudo modprobe bcm2835-v4l2`
+- Check `v4l2-ctl --list-devices` for available cameras
 
-[Service]
-User=pi
-WorkingDirectory=/home/pi/ESP32-Autonomous-car
-ExecStart=/home/pi/ESP32-Autonomous-car/venv/bin/python main.py
-Restart=on-failure
+### Arduino Not Detected
+- Run `ls /dev/ttyUSB* /dev/ttyACM*` to see available ports
+- Open Arduino IDE Serial Monitor (115200 baud) — you should see `{"id":"car"}` or `{"id":"arm"}`
+- If you see nothing, re-upload the firmware
+- Check permissions: `sudo usermod -aG dialout $USER` then reboot
+- Override in Settings if auto-detect fails
 
-[Install]
-WantedBy=multi-user.target
-```
+### PyTorch Won't Install
+- Ensure you're using **64-bit** Raspberry Pi OS (not 32-bit)
+- Use the specific ARM64 wheel URL:
+  ```bash
+  pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+  ```
+- If memory errors occur during install, increase swap:
+  ```bash
+  sudo dphys-swapfile swapoff
+  sudo sed -i 's/CONF_SWAPSIZE=.*/CONF_SWAPSIZE=2048/' /etc/dphys-swapfile
+  sudo dphys-swapfile setup
+  sudo dphys-swapfile swapon
+  ```
 
-```bash
-sudo systemctl enable robot.service
-sudo systemctl start robot.service
-```
+### WiFi Hotspot Not Appearing
+- Check hostapd status: `sudo systemctl status hostapd`
+- Check config: `cat /etc/hostapd/hostapd.conf`
+- Ensure WiFi isn't blocked: `sudo rfkill unblock wifi`
+- Re-run: `sudo ./setup_hotspot.sh`
+
+### Dashboard Not Loading
+- Check if the service is running: `sudo systemctl status garbagebot`
+- Try manual start to see errors: `python main.py`
+- Verify IP: `hostname -I` should show `192.168.4.1`

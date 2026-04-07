@@ -11,6 +11,8 @@ const int EN_B = 3;   // Right motor speed
 unsigned long lastCmdTime = 0;
 const int WATCHDOG_TIMEOUT = 1000; // ms
 
+bool identified = false;  // Set true once Pi acknowledges us
+
 void setup() {
   Serial.begin(115200);
   
@@ -25,6 +27,28 @@ void setup() {
 }
 
 void loop() {
+  // ─── IDENTIFICATION PHASE ───
+  // Continuously scream "I am the car!" until the Pi sends an ack
+  if (!identified) {
+    Serial.println(F("{\"id\":\"car\"}"));
+    
+    // Check if Pi responded with ack
+    if (Serial.available() > 0) {
+      String jsonStr = Serial.readStringUntil('\n');
+      StaticJsonDocument<100> doc;
+      if (!deserializeJson(doc, jsonStr)) {
+        const char* cmd = doc["cmd"];
+        if (cmd && strcmp(cmd, "ack") == 0) {
+          identified = true;
+          Serial.println(F("{\"status\":\"ok\",\"msg\":\"car identified\"}"));
+        }
+      }
+    }
+    delay(500);  // Scream every 500ms
+    return;       // Don't process motor commands until identified
+  }
+
+  // ─── NORMAL OPERATION ───
   if (Serial.available() > 0) {
     String jsonStr = Serial.readStringUntil('\n');
     
@@ -44,6 +68,10 @@ void loop() {
       moveCar(dir, speed);
       lastCmdTime = millis();
       Serial.println(F("{\"status\": \"ok\"}"));
+    }
+    // Allow re-identification if Pi sends ack again (e.g. after reboot)
+    else if (strcmp(cmd, "ack") == 0) {
+      Serial.println(F("{\"status\":\"ok\",\"msg\":\"car re-identified\"}"));
     }
   }
   

@@ -1,1 +1,1 @@
-from ml.training_pipeline import GarbageCNN, LineCNN, DataCollector, Trainer
+from ml.training_pipeline import CompactCNN, DrivingDataset, train_driving_model_in_background
