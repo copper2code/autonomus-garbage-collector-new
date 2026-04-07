@@ -81,9 +81,15 @@ apt-get install -y \
     libffi-dev libssl-dev \
     libi2c-dev i2c-tools \
     python3-libgpiod \
-    git hostapd dnsmasq \
+    git \
     raspi-config \
     curl
+
+# hostapd+dnsmasq only needed on Bullseye (dhcpcd systems)
+# On NM systems (Bookworm/Trixie+), NetworkManager handles AP mode natively
+if ! command -v nmcli &>/dev/null; then
+    apt-get install -y hostapd dnsmasq
+fi
 
 # ── Post-Bullseye vs Bullseye package variants ──────────────────
 # Detect based on tools, not codename (handles Trixie, Bookworm, future)
