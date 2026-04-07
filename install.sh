@@ -66,22 +66,44 @@ ok "Hardware validated: Raspberry Pi 4B (aarch64)"
 echo ""
 echo "━━━ Step 1/9: Installing system dependencies ━━━"
 
+OS_VERSION=$(grep -oP '(?<=VERSION_CODENAME=)\w+' /etc/os-release 2>/dev/null || echo "bullseye")
+echo "Detected OS: Raspberry Pi OS $OS_VERSION"
+
 apt-get update -qq
+
+# ── Core packages (all Pi OS versions) ──────────────────────────
 apt-get install -y \
     python3-pip python3-venv python3-dev \
-    libatlas-base-dev libopenblas-dev \
+    libopenblas-dev \
     libopenjp2-7 libjpeg-dev zlib1g-dev \
     libavcodec-dev libavformat-dev libswscale-dev \
     libv4l-dev v4l-utils \
     libffi-dev libssl-dev \
     libi2c-dev i2c-tools \
-    libgpiod2 python3-libgpiod \
+    python3-libgpiod \
     git hostapd dnsmasq \
-    libraspberrypi-bin \
     raspi-config \
     curl
 
-ok "System dependencies installed"
+# ── Bookworm-specific package names ─────────────────────────────
+if [ "$OS_VERSION" = "bookworm" ]; then
+    # libatlas dropped → libopenblas (already installed above)
+    # libgpiod2 → libgpiod2t64 (t64 ABI transition in Bookworm)
+    # libraspberrypi-bin → split into raspi-utils-core + raspi-utils-dt
+    apt-get install -y \
+        libgpiod2t64 \
+        raspi-utils-core raspi-utils-dt 2>/dev/null || \
+        warn "Some raspi-utils packages unavailable — raspi-config will still work"
+else
+    # Bullseye and older use original names
+    apt-get install -y \
+        libatlas-base-dev \
+        libgpiod2 \
+        libraspberrypi-bin 2>/dev/null || \
+        warn "Some packages unavailable on this OS version — continuing"
+fi
+
+ok "System dependencies installed ($OS_VERSION)"
 
 # ═══════════════════════════════════════════════════════════════════
 # STEP 2 — Pi 4B Hardware Interfaces
@@ -107,9 +129,15 @@ else
 fi
 
 # Disable serial console to free UART0 for Arduinos
-if grep -q "console=serial0" /boot/cmdline.txt 2>/dev/null; then
-    sed -i 's/console=serial0,[0-9]* //' /boot/cmdline.txt
-    ok "Serial console removed from /boot/cmdline.txt"
+# Bookworm moved cmdline.txt to /boot/firmware/
+if [ -f /boot/firmware/cmdline.txt ]; then
+    CMDLINE_FILE="/boot/firmware/cmdline.txt"
+else
+    CMDLINE_FILE="/boot/cmdline.txt"
+fi
+if grep -q "console=serial0" "$CMDLINE_FILE" 2>/dev/null; then
+    sed -i 's/console=serial0,[0-9]* //' "$CMDLINE_FILE"
+    ok "Serial console removed from $CMDLINE_FILE"
 fi
 
 # Enable /dev/gpiomem access
@@ -244,7 +272,12 @@ ok "Auto-start service enabled"
 echo ""
 echo "━━━ Step 9/9: Optimising Pi 4B GPU memory split ━━━"
 
-CONFIG_FILE="/boot/config.txt"
+# Bookworm moved config.txt to /boot/firmware/
+if [ -f /boot/firmware/config.txt ]; then
+    CONFIG_FILE="/boot/firmware/config.txt"
+else
+    CONFIG_FILE="/boot/config.txt"
+fi
 # Allocate minimum GPU RAM (16 MB) — frees more RAM for PyTorch inference
 if ! grep -q "^gpu_mem=" "$CONFIG_FILE" 2>/dev/null; then
     echo "gpu_mem=16" >> "$CONFIG_FILE"
