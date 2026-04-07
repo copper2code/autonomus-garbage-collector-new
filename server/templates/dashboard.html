@@ -4,205 +4,81 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GarbageBot Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #0b0f19;
-            --surface: #151b2b;
-            --surface2: #1c2438;
-            --border: #232d44;
-            --text: #e2e8f0;
-            --muted: #7a8baa;
-            --accent: #818cf8;
-            --accent2: #6366f1;
-            --green: #34d399;
-            --red: #f87171;
-            --yellow: #fbbf24;
-            --radius: 10px;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        :root{--bg:#0b0f19;--s1:#151b2b;--s2:#1c2438;--brd:#232d44;--txt:#e2e8f0;--mut:#7a8baa;--acc:#818cf8;--ac2:#6366f1;--grn:#34d399;--red:#f87171;--yel:#fbbf24;--r:10px}
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
 
-        /* ── Header ── */
-        header {
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            padding: 10px 20px;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        header h1 { font-size: 1.05rem; font-weight: 700; color: var(--accent); }
-        .chips { display: flex; gap: 10px; }
-        .chip {
-            font-size: 0.7rem; font-weight: 600;
-            padding: 3px 10px; border-radius: 20px;
-            background: var(--surface2); border: 1px solid var(--border);
-            display: flex; align-items: center; gap: 5px;
-        }
-        .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); }
-        .dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        header{background:var(--s1);border-bottom:1px solid var(--brd);padding:8px 16px;display:flex;align-items:center;justify-content:space-between}
+        header h1{font-size:1rem;font-weight:700;color:var(--acc)}
+        .chips{display:flex;gap:8px}
+        .chip{font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:14px;background:var(--s2);border:1px solid var(--brd);display:flex;align-items:center;gap:4px}
+        .dot{width:6px;height:6px;border-radius:50%;background:var(--red)}.dot.on{background:var(--grn);box-shadow:0 0 5px var(--grn)}
 
-        /* ── Tabs ── */
-        .tabs {
-            display: flex; background: var(--surface); border-bottom: 1px solid var(--border);
-        }
-        .tab {
-            padding: 10px 24px; border: none; background: none;
-            color: var(--muted); font-family: inherit; font-size: 0.8rem; font-weight: 600;
-            cursor: pointer; border-bottom: 2px solid transparent;
-        }
-        .tab:hover { color: var(--text); }
-        .tab.on { color: var(--accent); border-bottom-color: var(--accent); }
+        .tabs{display:flex;background:var(--s1);border-bottom:1px solid var(--brd)}
+        .tab{padding:8px 20px;border:none;background:none;color:var(--mut);font-family:inherit;font-size:.75rem;font-weight:600;cursor:pointer;border-bottom:2px solid transparent}
+        .tab:hover{color:var(--txt)}.tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+        .pg{display:none;padding:12px}.pg.on{display:block}
 
-        .page { display: none; padding: 16px; }
-        .page.on { display: block; }
+        .c{background:var(--s1);border:1px solid var(--brd);border-radius:var(--r);padding:12px}
+        .ct{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);margin-bottom:8px}
 
-        /* ── Card ── */
-        .card {
-            background: var(--surface); border: 1px solid var(--border);
-            border-radius: var(--radius); padding: 14px;
-        }
-        .card-title {
-            font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 1px; color: var(--muted); margin-bottom: 10px;
-        }
+        /* ── CONTROL LAYOUT: video left (constrained), controls right ── */
+        .ctrl{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:10px;align-items:start}
+        .right-col{display:flex;flex-direction:column;gap:10px}
 
-        /* ── Control Page Layout ── */
-        .ctrl-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: auto auto;
-            gap: 12px;
-        }
-        .ctrl-grid .card-video { grid-row: 1 / 3; }
+        /* ── Video — CONSTRAINED ── */
+        .vid{width:100%;border-radius:6px;overflow:hidden;background:#000;position:relative;max-height:300px}
+        .vid img{width:100%;height:100%;object-fit:contain;display:block}
+        .vid-badge{position:absolute;top:4px;left:4px;background:rgba(0,0,0,.7);padding:1px 6px;border-radius:3px;font-size:.55rem;font-weight:700;color:var(--grn)}
+        .vid-status{position:absolute;bottom:4px;right:4px;font-size:.5rem;color:var(--mut);background:rgba(0,0,0,.6);padding:1px 5px;border-radius:3px}
 
-        /* ── Video ── */
-        .vid-box {
-            width: 100%; border-radius: 6px; overflow: hidden;
-            background: #000; aspect-ratio: 4/3; position: relative;
-        }
-        .vid-box img { width: 100%; height: 100%; object-fit: contain; display: block; }
-        .vid-badge {
-            position: absolute; top: 6px; left: 6px;
-            background: rgba(0,0,0,.7); padding: 2px 8px; border-radius: 4px;
-            font-size: 0.6rem; font-weight: 700; color: var(--green);
-        }
+        .dpad{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-width:160px;margin:0 auto}
+        .btn{background:var(--ac2);color:#fff;border:none;padding:8px;border-radius:7px;font-weight:600;font-family:inherit;cursor:pointer;font-size:.75rem;transition:transform .1s;user-select:none}
+        .btn:active{transform:scale(.94)}.btn-d{background:var(--red)}.btn-w{background:var(--yel);color:#000}
+        .btn-g{background:transparent;color:var(--mut);border:1px solid var(--brd)}.btn-g:hover{border-color:var(--acc);color:var(--txt)}
+        #btn-up{grid-column:2;grid-row:1}#btn-left{grid-column:1;grid-row:2}#btn-stop{grid-column:2;grid-row:2}#btn-right{grid-column:3;grid-row:2}#btn-down{grid-column:2;grid-row:3}
 
-        /* ── D-Pad ── */
-        .dpad {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
-            max-width: 180px; margin: 0 auto;
-        }
+        .arm-label{font-size:.65rem;color:var(--mut);margin-bottom:3px;font-weight:600}
+        .arm-row{display:flex;gap:4px;margin-bottom:6px}.arm-row .btn{flex:1;padding:6px;font-size:.7rem}
 
-        /* ── Buttons ── */
-        .btn {
-            background: var(--accent2); color: #fff; border: none;
-            padding: 10px; border-radius: 8px; font-weight: 600;
-            font-family: inherit; cursor: pointer; font-size: 0.8rem;
-            transition: transform .1s; user-select: none;
-        }
-        .btn:active { transform: scale(.95); }
-        .btn-danger { background: var(--red); }
-        .btn-warn { background: var(--yellow); color: #000; }
-        .btn-ghost {
-            background: transparent; color: var(--muted);
-            border: 1px solid var(--border);
-        }
-        .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+        .sl label{display:flex;justify-content:space-between;font-size:.65rem;color:var(--mut);margin-bottom:1px}
+        .sl{margin-bottom:8px}
+        input[type=range]{width:100%;accent-color:var(--acc);height:4px}
 
-        #btn-up { grid-column: 2; grid-row: 1; }
-        #btn-left { grid-column: 1; grid-row: 2; }
-        #btn-stop { grid-column: 2; grid-row: 2; }
-        #btn-right { grid-column: 3; grid-row: 2; }
-        #btn-down { grid-column: 2; grid-row: 3; }
+        .mode-row{display:flex;gap:6px}
+        .mbtn{flex:1;padding:8px;border-radius:7px;font-weight:600;font-family:inherit;cursor:pointer;font-size:.75rem;border:2px solid var(--brd);background:none;color:var(--txt);transition:.2s}
+        .mbtn:hover{border-color:var(--acc)}.mbtn.on{background:var(--ac2);border-color:transparent;color:#fff}.mbtn.training.on{background:var(--yel);color:#000}
 
-        /* ── Mode ── */
-        .mode-row { display: flex; gap: 8px; }
-        .mode-btn {
-            flex: 1; padding: 10px; border-radius: 8px;
-            font-weight: 600; font-family: inherit; cursor: pointer;
-            font-size: 0.8rem; border: 2px solid var(--border);
-            background: none; color: var(--text); transition: .2s;
-        }
-        .mode-btn:hover { border-color: var(--accent); }
-        .mode-btn.on { background: var(--accent2); border-color: transparent; color: #fff; }
-        .mode-btn.training.on { background: var(--yellow); color: #000; }
-
-        /* ── Arm ── */
-        .arm-row { display: flex; gap: 6px; margin-bottom: 8px; }
-        .arm-row .btn { flex: 1; padding: 8px; font-size: 0.75rem; }
-        .arm-label { font-size: 0.72rem; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
-
-        /* ── Slider ── */
-        .slider-wrap { margin-bottom: 10px; }
-        .slider-wrap label {
-            display: flex; justify-content: space-between;
-            font-size: 0.72rem; color: var(--muted); margin-bottom: 2px;
-        }
-        input[type="range"] { width: 100%; accent-color: var(--accent); }
+        /* ── Input Log ── */
+        .log{max-height:90px;overflow-y:auto;background:var(--bg);border-radius:6px;padding:6px 8px;margin-top:6px;font-family:'Courier New',monospace;font-size:.65rem;color:var(--grn);line-height:1.4}
+        .log::-webkit-scrollbar{width:3px}.log::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px}
 
         /* ── Settings ── */
-        .set-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .set-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
-        .set-label { font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; }
-        .set-input, .set-select {
-            padding: 8px 10px; border-radius: 6px;
-            border: 1px solid var(--border); background: var(--bg);
-            color: var(--text); font-family: inherit; font-size: 0.85rem;
-        }
-        .set-input:focus, .set-select:focus { outline: none; border-color: var(--accent); }
+        .sg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+        .sr{display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+        .sl2{font-size:.65rem;font-weight:600;color:var(--mut);text-transform:uppercase}
+        .si,.ss{padding:7px 9px;border-radius:5px;border:1px solid var(--brd);background:var(--bg);color:var(--txt);font-family:inherit;font-size:.8rem}
+        .si:focus,.ss:focus{outline:none;border-color:var(--acc)}
 
-        /* ── Diagnostics ── */
-        .stat-row {
-            display: flex; align-items: center; gap: 8px;
-            padding: 6px 0; font-size: 0.8rem;
-        }
-        .stat-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--red); flex-shrink: 0; }
-        .stat-dot.ok { background: var(--green); box-shadow: 0 0 5px var(--green); }
-        .sys-bar {
-            display: flex; gap: 12px; margin-top: 10px; padding: 8px;
-            border-radius: 6px; background: var(--bg);
-        }
-        .sys-item { flex: 1; text-align: center; }
-        .sys-val { font-size: 1rem; font-weight: 700; color: var(--accent); }
-        .sys-lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; }
+        .stat-row{display:flex;align-items:center;gap:6px;padding:5px 0;font-size:.75rem}
+        .sd{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}.sd.ok{background:var(--grn);box-shadow:0 0 4px var(--grn)}
+        .sys-bar{display:flex;gap:10px;margin-top:8px;padding:6px;border-radius:5px;background:var(--bg)}
+        .sys-i{flex:1;text-align:center}.sys-v{font-size:.9rem;font-weight:700;color:var(--acc)}.sys-l{font-size:.55rem;color:var(--mut);text-transform:uppercase}
 
-        /* ── Banner / Toast ── */
-        .banner {
-            display: none; padding: 8px 12px; border-radius: 6px;
-            font-weight: 600; font-size: 0.78rem; text-align: center; margin-top: 8px;
-        }
-        .banner.train { background: var(--yellow); color: #000; }
-        .banner.ok { background: var(--green); color: #fff; }
+        .toast{position:fixed;bottom:14px;right:14px;padding:8px 16px;border-radius:7px;font-weight:600;font-size:.75rem;z-index:99;box-shadow:0 4px 20px rgba(0,0,0,.5);display:none}
+        .toast.success{background:var(--grn);color:#fff}.toast.error{background:var(--red);color:#fff}.toast.warning{background:var(--yel);color:#000}
 
-        .toast {
-            position: fixed; bottom: 16px; right: 16px;
-            padding: 10px 20px; border-radius: 8px;
-            font-weight: 600; font-size: 0.8rem; z-index: 99;
-            box-shadow: 0 6px 24px rgba(0,0,0,.5); display: none;
-        }
-        .toast.success { background: var(--green); color: #fff; }
-        .toast.error { background: var(--red); color: #fff; }
-        .toast.warning { background: var(--yellow); color: #000; }
+        .banner{display:none;padding:6px 10px;border-radius:5px;font-weight:600;font-size:.7rem;text-align:center;margin-top:6px}
+        .banner.train{background:var(--yel);color:#000}.banner.ok{background:var(--grn);color:#fff}
 
-        /* ── Responsive ── */
-        @media (max-width: 700px) {
-            .ctrl-grid { grid-template-columns: 1fr; }
-            .ctrl-grid .card-video { grid-row: auto; }
-            .set-grid { grid-template-columns: 1fr; }
-        }
+        @media(max-width:700px){.ctrl,.sg{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
 
-<header>
-    <h1>🤖 GarbageBot</h1>
-    <div class="chips">
-        <div class="chip"><span class="dot" id="c-car"></span>Car</div>
-        <div class="chip"><span class="dot" id="c-arm"></span>Arm</div>
-        <div class="chip"><span class="dot" id="c-cam"></span>Cam</div>
-    </div>
-</header>
+<header><h1>🤖 GarbageBot</h1><div class="chips"><div class="chip"><span class="dot" id="c-car"></span>Car</div><div class="chip"><span class="dot" id="c-arm"></span>Arm</div><div class="chip"><span class="dot" id="c-cam"></span>Cam</div></div></header>
 
 <div class="tabs">
     <button class="tab on" onclick="openTab('control',this)">🎮 Control</button>
@@ -210,182 +86,126 @@
     <button class="tab" onclick="openTab('diag',this)">📊 Status</button>
 </div>
 
-<!-- ═══════  CONTROL TAB  ═══════ -->
-<div class="page on" id="p-control">
-    <div class="ctrl-grid">
-        <!-- Video -->
-        <div class="card card-video">
-            <div class="card-title">📹 Camera</div>
-            <div class="vid-box">
-                <img src="/video_feed" alt="Live">
-                <div class="vid-badge" id="mode-badge">MANUAL</div>
+<!-- ═══ CONTROL ═══ -->
+<div class="pg on" id="p-control">
+    <div class="ctrl">
+        <!-- LEFT: Video + Log -->
+        <div>
+            <div class="c">
+                <div class="ct">📹 Camera</div>
+                <div class="vid">
+                    <img id="cam-img" alt="Camera">
+                    <div class="vid-badge" id="mode-badge">MANUAL</div>
+                    <div class="vid-status" id="fps-counter">-- fps</div>
+                </div>
+                <div class="banner train" id="train-banner">⚡ Training... <span id="tp">0</span>%</div>
+                <div class="banner ok" id="notif-box"></div>
             </div>
-            <div class="banner train" id="train-banner">⚡ Training... <span id="tp">0</span>%</div>
-            <div class="banner ok" id="notif-box"></div>
+            <div class="c" style="margin-top:10px;">
+                <div class="ct">📋 Input Log <span style="font-weight:400;text-transform:none;font-size:.6rem">(confirms Pi received your commands)</span></div>
+                <div class="log" id="input-log">Waiting for input...</div>
+            </div>
         </div>
 
-        <!-- Right Column -->
-        <div style="display:flex;flex-direction:column;gap:12px;">
-            <!-- D-Pad -->
-            <div class="card">
-                <div class="card-title">🕹️ Drive</div>
+        <!-- RIGHT: Drive + Arm -->
+        <div class="right-col">
+            <div class="c">
+                <div class="ct">🕹️ Drive</div>
                 <div class="dpad">
                     <button class="btn" id="btn-up">▲</button>
                     <button class="btn" id="btn-left">◀</button>
-                    <button class="btn btn-danger" id="btn-stop">■</button>
+                    <button class="btn btn-d" id="btn-stop">■</button>
                     <button class="btn" id="btn-right">▶</button>
                     <button class="btn" id="btn-down">▼</button>
                 </div>
-                <div class="slider-wrap" style="margin-top:10px;">
+                <div class="sl" style="margin-top:8px">
                     <label><span>Speed</span><span id="sv">180</span></label>
-                    <input type="range" id="speed" min="80" max="255" value="180"
-                           oninput="document.getElementById('sv').innerText=this.value">
+                    <input type="range" id="speed" min="80" max="255" value="180" oninput="document.getElementById('sv').innerText=this.value">
                 </div>
             </div>
-
-            <!-- Arm -->
-            <div class="card">
-                <div class="card-title">🦾 Arm</div>
-                <div class="slider-wrap">
-                    <label><span>Clamp</span><span id="cv">10°</span></label>
-                    <input type="range" min="0" max="180" value="10" id="clamp"
-                           onchange="armCmd('clamp',this.value)"
-                           oninput="document.getElementById('cv').innerText=this.value+'°'">
+            <div class="c">
+                <div class="ct">🦾 Arm</div>
+                <div class="sl">
+                    <label><span>Clamp</span><span id="cvl">10°</span></label>
+                    <input type="range" min="0" max="180" value="10" id="clamp" onchange="armCmd('clamp',this.value)" oninput="document.getElementById('cvl').innerText=this.value+'°'">
                 </div>
                 <div class="arm-label">Base</div>
-                <div class="arm-row">
-                    <button class="btn" onclick="armCmd('base',-25)">← L</button>
-                    <button class="btn" onclick="armCmd('base',25)">R →</button>
-                </div>
+                <div class="arm-row"><button class="btn" onclick="armCmd('base',-25)">← L</button><button class="btn" onclick="armCmd('base',25)">R →</button></div>
                 <div class="arm-label">Joint</div>
-                <div class="arm-row">
-                    <button class="btn" onclick="armCmd('joint',-50)">↓</button>
-                    <button class="btn" onclick="armCmd('joint',50)">↑</button>
-                </div>
+                <div class="arm-row"><button class="btn" onclick="armCmd('joint',-50)">↓</button><button class="btn" onclick="armCmd('joint',50)">↑</button></div>
                 <div class="arm-label">Extend</div>
-                <div class="arm-row">
-                    <button class="btn" onclick="armCmd('ext',-50)">⟵</button>
-                    <button class="btn" onclick="armCmd('ext',50)">⟶</button>
-                </div>
-                <button class="btn btn-warn" style="width:100%;margin-top:6px;" onclick="resetArm()">🔄 Home</button>
+                <div class="arm-row"><button class="btn" onclick="armCmd('ext',-50)">⟵</button><button class="btn" onclick="armCmd('ext',50)">⟶</button></div>
+                <button class="btn btn-w" style="width:100%;margin-top:4px" onclick="resetArm()">🔄 Home</button>
             </div>
         </div>
     </div>
 
-    <!-- Mode Row -->
-    <div class="card" style="margin-top:12px;">
-        <div class="card-title">🎯 Mode</div>
+    <!-- Mode -->
+    <div class="c" style="margin-top:10px">
+        <div class="ct">🎯 Mode</div>
         <div class="mode-row">
-            <button class="mode-btn on" id="m-manual" onclick="setMode('manual')">🎮 Manual</button>
-            <button class="mode-btn training" id="m-training" onclick="setMode('training')">🎓 Train</button>
-            <button class="mode-btn" id="m-autonomous" onclick="setMode('autonomous')">🤖 Auto</button>
+            <button class="mbtn on" id="m-manual" onclick="setMode('manual')">🎮 Manual</button>
+            <button class="mbtn training" id="m-training" onclick="setMode('training')">🎓 Train</button>
+            <button class="mbtn" id="m-autonomous" onclick="setMode('autonomous')">🤖 Auto</button>
         </div>
     </div>
 </div>
 
-<!-- ═══════  SETTINGS TAB  ═══════ -->
-<div class="page" id="p-settings">
-    <div class="set-grid">
-        <div class="card">
-            <div class="card-title">📷 Camera</div>
-            <div class="set-row">
-                <span class="set-label">Camera Index</span>
-                <select class="set-select" id="s-cam"><option value="0">Camera 0</option></select>
-            </div>
-            <div style="display:flex;gap:6px;">
-                <button class="btn btn-ghost" onclick="scanCams()">🔍 Scan</button>
-                <button class="btn" onclick="testCam()">📸 Test</button>
-            </div>
+<!-- ═══ SETTINGS ═══ -->
+<div class="pg" id="p-settings">
+    <div class="sg">
+        <div class="c"><div class="ct">📷 Camera</div>
+            <div class="sr"><span class="sl2">Camera Index</span><select class="ss" id="s-cam"><option value="0">Camera 0</option></select></div>
+            <div style="display:flex;gap:5px"><button class="btn btn-g" onclick="scanCams()">🔍 Scan</button><button class="btn" onclick="testCam()">📸 Test</button></div>
         </div>
-
-        <div class="card">
-            <div class="card-title">🔌 Serial Ports</div>
-            <div class="set-row">
-                <span class="set-label">Car Port</span>
-                <select class="set-select" id="s-carport"><option value="auto">Auto-detect</option></select>
-            </div>
-            <div class="set-row">
-                <span class="set-label">Arm Port</span>
-                <select class="set-select" id="s-armport"><option value="auto">Auto-detect</option></select>
-            </div>
-            <button class="btn btn-ghost" onclick="scanPorts()">🔍 Scan Ports</button>
+        <div class="c"><div class="ct">🔌 Serial Ports</div>
+            <div class="sr"><span class="sl2">Car Port</span><select class="ss" id="s-carport"><option value="auto">Auto-detect</option></select></div>
+            <div class="sr"><span class="sl2">Arm Port</span><select class="ss" id="s-armport"><option value="auto">Auto-detect</option></select></div>
+            <button class="btn btn-g" onclick="scanPorts()">🔍 Scan Ports</button>
         </div>
-
-        <div class="card">
-            <div class="card-title">⚡ Motors</div>
-            <div class="set-row">
-                <span class="set-label">Default Speed</span>
-                <input type="number" class="set-input" id="s-speed" min="80" max="255" value="180">
-            </div>
-            <div class="set-row">
-                <span class="set-label">Turn Speed</span>
-                <input type="number" class="set-input" id="s-turn" min="80" max="255" value="160">
-            </div>
+        <div class="c"><div class="ct">⚡ Motors</div>
+            <div class="sr"><span class="sl2">Default Speed</span><input type="number" class="si" id="s-speed" min="80" max="255" value="180"></div>
+            <div class="sr"><span class="sl2">Turn Speed</span><input type="number" class="si" id="s-turn" min="80" max="255" value="160"></div>
         </div>
-
-        <div class="card">
-            <div class="card-title">📶 WiFi Hotspot</div>
-            <div class="set-row">
-                <span class="set-label">SSID</span>
-                <input type="text" class="set-input" id="s-ssid" value="GarbageBot">
-            </div>
-            <div class="set-row">
-                <span class="set-label">Password</span>
-                <input type="text" class="set-input" id="s-pass" value="robot1234">
-            </div>
-            <p style="font-size:.68rem;color:var(--muted)">Changes take effect after reboot.</p>
+        <div class="c"><div class="ct">📶 WiFi Hotspot</div>
+            <div class="sr"><span class="sl2">SSID</span><input type="text" class="si" id="s-ssid" value="GarbageBot"></div>
+            <div class="sr"><span class="sl2">Password</span><input type="text" class="si" id="s-pass" value="robot1234"></div>
+            <p style="font-size:.6rem;color:var(--mut)">Changes take effect after reboot.</p>
         </div>
-
-        <div class="card">
-            <div class="card-title">🧠 ML</div>
-            <div class="set-row">
-                <span class="set-label">Bin Detect Threshold</span>
-                <input type="number" class="set-input" id="s-thresh" min="0.5" max="1.0" step="0.05" value="0.85">
-            </div>
+        <div class="c"><div class="ct">🧠 ML</div>
+            <div class="sr"><span class="sl2">Bin Detect Threshold</span><input type="number" class="si" id="s-thresh" min="0.5" max="1.0" step="0.05" value="0.85"></div>
         </div>
-
-        <div class="card">
-            <div class="card-title">🔧 Arm Calibration</div>
-            <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">
-                Test arm before autonomous mode.
-            </p>
-            <button class="btn" style="width:100%;margin-bottom:6px;" onclick="resetArm()">🔄 Reset to Home</button>
-            <button class="btn btn-ghost" style="width:100%;" onclick="toast('Test started','warning')">🧪 Test Sequence</button>
+        <div class="c"><div class="ct">🔧 Arm Calibration</div>
+            <p style="font-size:.7rem;color:var(--mut);margin-bottom:8px">Test arm before autonomous mode.</p>
+            <button class="btn" style="width:100%;margin-bottom:5px" onclick="resetArm()">🔄 Reset to Home</button>
         </div>
-
-        <div class="card" style="grid-column:1/-1;">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-                <button class="btn btn-ghost" style="color:var(--red);border-color:var(--red);" onclick="resetDefaults()">⚠️ Factory Reset</button>
-                <button class="btn" style="padding:10px 28px;" onclick="saveSettings()">💾 Save All</button>
-            </div>
-        </div>
+        <div class="c" style="grid-column:1/-1"><div style="display:flex;justify-content:space-between;align-items:center">
+            <button class="btn btn-g" style="color:var(--red);border-color:var(--red)" onclick="resetDefaults()">⚠️ Factory Reset</button>
+            <button class="btn" style="padding:8px 24px" onclick="saveSettings()">💾 Save All</button>
+        </div></div>
     </div>
 </div>
 
-<!-- ═══════  DIAGNOSTICS TAB  ═══════ -->
-<div class="page" id="p-diag">
-    <div class="set-grid">
-        <div class="card">
-            <div class="card-title">🔌 Connections</div>
-            <div class="stat-row"><span class="stat-dot" id="d-car"></span>Car Arduino<span style="margin-left:auto;color:var(--muted);font-size:.75rem" id="d-car-p">—</span></div>
-            <div class="stat-row"><span class="stat-dot" id="d-arm"></span>Arm Arduino<span style="margin-left:auto;color:var(--muted);font-size:.75rem" id="d-arm-p">—</span></div>
-            <div class="stat-row"><span class="stat-dot" id="d-cam"></span>Camera<span style="margin-left:auto;color:var(--muted);font-size:.75rem" id="d-cam-i">—</span></div>
+<!-- ═══ DIAGNOSTICS ═══ -->
+<div class="pg" id="p-diag">
+    <div class="sg">
+        <div class="c"><div class="ct">🔌 Connections</div>
+            <div class="stat-row"><span class="sd" id="d-car"></span>Car Arduino<span style="margin-left:auto;color:var(--mut);font-size:.65rem" id="d-car-p">—</span></div>
+            <div class="stat-row"><span class="sd" id="d-arm"></span>Arm Arduino<span style="margin-left:auto;color:var(--mut);font-size:.65rem" id="d-arm-p">—</span></div>
+            <div class="stat-row"><span class="sd" id="d-cam"></span>Camera<span style="margin-left:auto;color:var(--mut);font-size:.65rem" id="d-cam-i">—</span></div>
         </div>
-        <div class="card">
-            <div class="card-title">🧠 Models</div>
-            <div class="stat-row"><span class="stat-dot" id="d-drv"></span>Driving CNN<span style="margin-left:auto;color:var(--muted);font-size:.75rem" id="d-drv-i">Not trained</span></div>
-            <div class="stat-row"><span class="stat-dot" id="d-bin"></span>Bin Detection<span style="margin-left:auto;color:var(--muted);font-size:.75rem" id="d-bin-i">Not loaded</span></div>
+        <div class="c"><div class="ct">🧠 Models</div>
+            <div class="stat-row"><span class="sd" id="d-drv"></span>Driving CNN<span style="margin-left:auto;color:var(--mut);font-size:.65rem" id="d-drv-i">Not trained</span></div>
+            <div class="stat-row"><span class="sd" id="d-bin"></span>Bin Detection<span style="margin-left:auto;color:var(--mut);font-size:.65rem" id="d-bin-i">Not loaded</span></div>
         </div>
-        <div class="card">
-            <div class="card-title">📊 System</div>
+        <div class="c"><div class="ct">📊 System</div>
             <div class="sys-bar">
-                <div class="sys-item"><div class="sys-val" id="sys-cpu">—</div><div class="sys-lbl">CPU</div></div>
-                <div class="sys-item"><div class="sys-val" id="sys-ram">—</div><div class="sys-lbl">RAM</div></div>
-                <div class="sys-item"><div class="sys-val" id="sys-tmp">—</div><div class="sys-lbl">Temp</div></div>
+                <div class="sys-i"><div class="sys-v" id="sys-cpu">—</div><div class="sys-l">CPU</div></div>
+                <div class="sys-i"><div class="sys-v" id="sys-ram">—</div><div class="sys-l">RAM</div></div>
+                <div class="sys-i"><div class="sys-v" id="sys-tmp">—</div><div class="sys-l">Temp</div></div>
             </div>
         </div>
-        <div class="card">
-            <div class="card-title">📋 State</div>
+        <div class="c"><div class="ct">📋 State</div>
             <div class="stat-row">Mode<strong style="margin-left:auto;text-transform:capitalize" id="d-mode">Manual</strong></div>
             <div class="stat-row">Arm<span style="margin-left:auto" id="d-armb">Idle</span></div>
             <div class="stat-row">Target<span style="margin-left:auto;font-weight:600" id="d-tgt">None</span></div>
@@ -397,10 +217,45 @@
 
 <script>
 const A='';
+const logEl=document.getElementById('input-log');
+let logLines=[];
 
-// ── Tabs ──
+function log(msg){
+    const t=new Date().toLocaleTimeString('en',{hour12:false});
+    logLines.push(`[${t}] ${msg}`);
+    if(logLines.length>50)logLines.shift();
+    logEl.innerHTML=logLines.join('<br>');
+    logEl.scrollTop=logEl.scrollHeight;
+}
+
+// ═══ SNAPSHOT POLLING (never crashes, auto-recovers) ═══
+const camImg=document.getElementById('cam-img');
+let frameCount=0,lastFpsTime=Date.now();
+
+function fetchFrame(){
+    const img=new Image();
+    img.onload=()=>{
+        camImg.src=img.src;
+        frameCount++;
+        const now=Date.now();
+        if(now-lastFpsTime>=2000){
+            document.getElementById('fps-counter').innerText=Math.round(frameCount/((now-lastFpsTime)/1000))+' fps';
+            frameCount=0;lastFpsTime=now;
+        }
+        // Request next frame immediately after this one loads
+        setTimeout(fetchFrame,80); // ~12fps
+    };
+    img.onerror=()=>{
+        // Auto-recover: just try again after a short delay
+        setTimeout(fetchFrame,500);
+    };
+    img.src=A+'/snapshot?t='+Date.now(); // cache-bust
+}
+fetchFrame(); // Start polling
+
+// ═══ Tabs ═══
 function openTab(id,el){
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+    document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
     document.getElementById('p-'+id).classList.add('on');
     el.classList.add('on');
@@ -408,18 +263,13 @@ function openTab(id,el){
     if(id==='diag')loadSysInfo();
 }
 
-// ── Toast ──
 function toast(m,t='success'){
-    const e=document.getElementById('toast');
-    e.innerText=m;e.className='toast '+t;e.style.display='block';
+    const e=document.getElementById('toast');e.innerText=m;e.className='toast '+t;e.style.display='block';
     setTimeout(()=>e.style.display='none',3000);
 }
 
-// ── Car ──
-const cmap={
-    'btn-up':'forward','btn-down':'backward',
-    'btn-left':'left','btn-right':'right','btn-stop':'stop'
-};
+// ═══ Car Control ═══
+const cmap={'btn-up':'forward','btn-down':'backward','btn-left':'left','btn-right':'right','btn-stop':'stop'};
 for(const[id,act] of Object.entries(cmap)){
     const b=document.getElementById(id);
     b.addEventListener('mousedown',()=>carCmd(act));
@@ -428,53 +278,57 @@ for(const[id,act] of Object.entries(cmap)){
     b.addEventListener('touchend',e=>{e.preventDefault();carCmd('stop');});
 }
 document.addEventListener('keydown',e=>{
-    if(e.repeat)return;const k=e.key.toLowerCase();
+    if(e.repeat||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
     if(k==='w')carCmd('forward');if(k==='s')carCmd('backward');
     if(k==='a')carCmd('left');if(k==='d')carCmd('right');if(k===' ')carCmd('stop');
 });
-document.addEventListener('keyup',e=>{
-    if('wasd'.includes(e.key.toLowerCase()))carCmd('stop');
-});
+document.addEventListener('keyup',e=>{if('wasd'.includes(e.key.toLowerCase()))carCmd('stop');});
 
-function carCmd(a){
-    fetch(A+'/control/car',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:a,speed:+document.getElementById('speed').value})}).catch(()=>{});
-}
-function armCmd(m,v){
-    fetch(A+'/control/arm',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({motor:m,value:+v})}).catch(()=>{});
-}
-async function resetArm(){
-    const r=await fetch(A+'/control/arm/reset',{method:'POST'});
-    const d=await r.json();toast(d.message||'Arm reset',r.ok?'success':'error');
-}
-
-// ── Mode ──
-async function setMode(m){
-    await fetch(A+'/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})});
-    updMode(m);
-}
-function updMode(m){
-    ['manual','training','autonomous'].forEach(x=>{
-        document.getElementById('m-'+x).classList.toggle('on',x===m);
-    });
-}
-
-// ── Settings ──
-async function loadSettings(){
+async function carCmd(a){
+    const spd=+document.getElementById('speed').value;
     try{
-        const r=await fetch(A+'/settings');const s=await r.json();
+        const r=await fetch(A+'/control/car',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:a,speed:spd})});
+        const d=await r.json();
+        if(a!=='stop') log(`🚗 CAR → ${a.toUpperCase()} (speed ${spd}) — Pi: ${d.status}`);
+    }catch(e){log(`❌ CAR → ${a} — FAILED (no connection)`);}
+}
+
+async function armCmd(m,v){
+    try{
+        const r=await fetch(A+'/control/arm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({motor:m,value:+v})});
+        const d=await r.json();
+        log(`🦾 ARM → ${m} = ${v} — Pi: ${d.status}`);
+    }catch(e){log(`❌ ARM → ${m} — FAILED`);}
+}
+
+async function resetArm(){
+    try{
+        const r=await fetch(A+'/control/arm/reset',{method:'POST'});const d=await r.json();
+        log(`🔄 ARM RESET — Pi: ${d.message||d.status}`);
+        toast(d.message||'Arm reset',r.ok?'success':'error');
+    }catch(e){log('❌ ARM RESET — FAILED');}
+}
+
+// ═══ Mode ═══
+async function setMode(m){
+    try{
+        await fetch(A+'/mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:m})});
+        log(`🎯 MODE → ${m.toUpperCase()}`);
+        updMode(m);
+    }catch(e){log(`❌ MODE → ${m} — FAILED`);}
+}
+function updMode(m){['manual','training','autonomous'].forEach(x=>document.getElementById('m-'+x).classList.toggle('on',x===m));}
+
+// ═══ Settings ═══
+async function loadSettings(){
+    try{const r=await fetch(A+'/settings');const s=await r.json();
         document.getElementById('s-speed').value=s.default_speed||180;
         document.getElementById('s-turn').value=s.turn_speed||160;
         document.getElementById('s-ssid').value=s.hotspot_ssid||'GarbageBot';
         document.getElementById('s-pass').value=s.hotspot_password||'robot1234';
         document.getElementById('s-thresh').value=s.bin_detect_threshold||0.85;
-
         const cs=document.getElementById('s-cam');cs.innerHTML='';
-        (s.available_cameras||[0]).forEach(i=>{
-            const o=document.createElement('option');o.value=i;o.text='Camera '+i;
-            o.selected=(i===s.camera_index);cs.appendChild(o);
-        });
+        (s.available_cameras||[0]).forEach(i=>{const o=document.createElement('option');o.value=i;o.text='Camera '+i;o.selected=(i===s.camera_index);cs.appendChild(o);});
         fillPorts('s-carport',s.available_ports||[],s.car_serial_port);
         fillPorts('s-armport',s.available_ports||[],s.arm_serial_port);
     }catch(e){}
@@ -484,87 +338,51 @@ function fillPorts(id,ports,cur){
     ports.forEach(p=>{const o=document.createElement('option');o.value=p;o.text=p;o.selected=(p===cur);s.appendChild(o);});
 }
 async function saveSettings(){
-    const d={
-        camera_index:+document.getElementById('s-cam').value,
-        car_serial_port:document.getElementById('s-carport').value,
-        arm_serial_port:document.getElementById('s-armport').value,
-        default_speed:+document.getElementById('s-speed').value,
-        turn_speed:+document.getElementById('s-turn').value,
-        hotspot_ssid:document.getElementById('s-ssid').value,
-        hotspot_password:document.getElementById('s-pass').value,
-        bin_detect_threshold:+document.getElementById('s-thresh').value,
-    };
+    const d={camera_index:+document.getElementById('s-cam').value,car_serial_port:document.getElementById('s-carport').value,
+        arm_serial_port:document.getElementById('s-armport').value,default_speed:+document.getElementById('s-speed').value,
+        turn_speed:+document.getElementById('s-turn').value,hotspot_ssid:document.getElementById('s-ssid').value,
+        hotspot_password:document.getElementById('s-pass').value,bin_detect_threshold:+document.getElementById('s-thresh').value};
     try{const r=await fetch(A+'/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
-        const j=await r.json();toast(j.message||'Saved!',r.ok?'success':'error');
+        const j=await r.json();toast(j.message||'Saved!',r.ok?'success':'error');log('💾 Settings saved');
     }catch(e){toast('Save failed','error');}
 }
-async function resetDefaults(){
-    if(!confirm('Reset all settings?'))return;
-    await fetch(A+'/settings/reset',{method:'POST'});toast('Reset done','success');loadSettings();
-}
-async function scanPorts(){
-    const r=await fetch(A+'/settings/scan-ports');const d=await r.json();
-    fillPorts('s-carport',d.ports||[]);fillPorts('s-armport',d.ports||[]);
-    toast('Found '+((d.ports||[]).length)+' port(s)','success');
-}
-async function scanCams(){
-    toast('Scanning...','warning');
-    const r=await fetch(A+'/settings/scan-cameras');const d=await r.json();
-    const cs=document.getElementById('s-cam');cs.innerHTML='';
-    (d.cameras||[]).forEach(i=>{const o=document.createElement('option');o.value=i;o.text='Camera '+i;cs.appendChild(o);});
-    toast('Found '+((d.cameras||[]).length)+' camera(s)','success');
-}
-async function testCam(){
-    const i=+document.getElementById('s-cam').value;toast('Testing cam '+i+'...','warning');
+async function resetDefaults(){if(!confirm('Reset all settings?'))return;await fetch(A+'/settings/reset',{method:'POST'});toast('Reset','success');loadSettings();}
+async function scanPorts(){const r=await fetch(A+'/settings/scan-ports');const d=await r.json();fillPorts('s-carport',d.ports||[]);fillPorts('s-armport',d.ports||[]);toast('Found '+(d.ports||[]).length+' port(s)','success');}
+async function scanCams(){toast('Scanning...','warning');const r=await fetch(A+'/settings/scan-cameras');const d=await r.json();
+    const cs=document.getElementById('s-cam');cs.innerHTML='';(d.cameras||[]).forEach(i=>{const o=document.createElement('option');o.value=i;o.text='Camera '+i;cs.appendChild(o);});
+    toast('Found '+(d.cameras||[]).length+' camera(s)','success');}
+async function testCam(){const i=+document.getElementById('s-cam').value;toast('Testing...','warning');
     const r=await fetch(A+'/settings/test-camera',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({camera_index:i})});
-    const d=await r.json();toast(d.message,r.ok?'success':'error');
-}
+    const d=await r.json();toast(d.message,r.ok?'success':'error');}
 
-// ── System Info ──
-async function loadSysInfo(){
-    try{const r=await fetch(A+'/system/info');const d=await r.json();
-        if(d.cpu_percent!=null)document.getElementById('sys-cpu').innerText=d.cpu_percent+'%';
-        if(d.ram_percent!=null)document.getElementById('sys-ram').innerText=d.ram_percent+'%';
-        if(d.cpu_temp!=null)document.getElementById('sys-tmp').innerText=d.cpu_temp+'°C';
-    }catch(e){}
-}
+async function loadSysInfo(){try{const r=await fetch(A+'/system/info');const d=await r.json();
+    if(d.cpu_percent!=null)document.getElementById('sys-cpu').innerText=d.cpu_percent+'%';
+    if(d.ram_percent!=null)document.getElementById('sys-ram').innerText=d.ram_percent+'%';
+    if(d.cpu_temp!=null)document.getElementById('sys-tmp').innerText=d.cpu_temp+'°C'}catch(e){}}
 
-// ── Polling ──
-setInterval(async()=>{
-    try{const r=await fetch(A+'/status');const d=await r.json();
-        document.getElementById('c-car').className='dot'+(d.car_connected?' on':'');
-        document.getElementById('c-arm').className='dot'+(d.arm_connected?' on':'');
-        document.getElementById('c-cam').className='dot'+(d.camera_running?' on':'');
-        document.getElementById('mode-badge').innerText=d.mode.toUpperCase();
-        updMode(d.mode);
-
-        // Diagnostics
-        document.getElementById('d-car').className='stat-dot'+(d.car_connected?' ok':'');
-        document.getElementById('d-arm').className='stat-dot'+(d.arm_connected?' ok':'');
-        document.getElementById('d-cam').className='stat-dot'+(d.camera_running?' ok':'');
-        document.getElementById('d-car-p').innerText=d.car_port||'—';
-        document.getElementById('d-arm-p').innerText=d.arm_port||'—';
-        document.getElementById('d-cam-i').innerText=d.camera_running?'Index '+d.camera_index:'Offline';
-        document.getElementById('d-drv').className='stat-dot'+(d.driving_model_loaded?' ok':'');
-        document.getElementById('d-bin').className='stat-dot'+(d.bin_model_loaded?' ok':'');
-        document.getElementById('d-drv-i').innerText=d.driving_model_loaded?'Loaded ✓':'Not trained';
-        document.getElementById('d-bin-i').innerText=d.bin_model_loaded?'Loaded ✓':'Not loaded';
-        document.getElementById('d-mode').innerText=d.mode;
-        document.getElementById('d-armb').innerText=d.arm_busy?'🔄 Collecting...':'Idle';
-        const tgt=document.getElementById('d-tgt');
-        tgt.innerText=d.bin_detected?'🎯 BIN':'None';
-        tgt.style.color=d.bin_detected?'var(--green)':'var(--muted)';
-
-        const b=document.getElementById('train-banner');
-        if(d.training_status==='training'){b.style.display='block';document.getElementById('tp').innerText=d.training_progress;}
-        else b.style.display='none';
-
-        if(d.notification){
-            const n=document.getElementById('notif-box');n.style.display='block';n.innerText='✅ '+d.notification;
-            setTimeout(()=>n.style.display='none',6000);
-        }
-    }catch(e){}
-},1200);
+// ═══ Status Polling ═══
+setInterval(async()=>{try{const r=await fetch(A+'/status');const d=await r.json();
+    document.getElementById('c-car').className='dot'+(d.car_connected?' on':'');
+    document.getElementById('c-arm').className='dot'+(d.arm_connected?' on':'');
+    document.getElementById('c-cam').className='dot'+(d.camera_running?' on':'');
+    document.getElementById('mode-badge').innerText=d.mode.toUpperCase();updMode(d.mode);
+    document.getElementById('d-car').className='sd'+(d.car_connected?' ok':'');
+    document.getElementById('d-arm').className='sd'+(d.arm_connected?' ok':'');
+    document.getElementById('d-cam').className='sd'+(d.camera_running?' ok':'');
+    document.getElementById('d-car-p').innerText=d.car_port||'—';
+    document.getElementById('d-arm-p').innerText=d.arm_port||'—';
+    document.getElementById('d-cam-i').innerText=d.camera_running?'Index '+d.camera_index:'Offline';
+    document.getElementById('d-drv').className='sd'+(d.driving_model_loaded?' ok':'');
+    document.getElementById('d-bin').className='sd'+(d.bin_model_loaded?' ok':'');
+    document.getElementById('d-drv-i').innerText=d.driving_model_loaded?'Loaded ✓':'Not trained';
+    document.getElementById('d-bin-i').innerText=d.bin_model_loaded?'Loaded ✓':'Not loaded';
+    document.getElementById('d-mode').innerText=d.mode;
+    document.getElementById('d-armb').innerText=d.arm_busy?'🔄 Busy':'Idle';
+    const tgt=document.getElementById('d-tgt');tgt.innerText=d.bin_detected?'🎯 BIN':'None';tgt.style.color=d.bin_detected?'var(--grn)':'var(--mut)';
+    const b=document.getElementById('train-banner');
+    if(d.training_status==='training'){b.style.display='block';document.getElementById('tp').innerText=d.training_progress}else b.style.display='none';
+    if(d.notification){const n=document.getElementById('notif-box');n.style.display='block';n.innerText='✅ '+d.notification;setTimeout(()=>n.style.display='none',6000)}
+}catch(e){}},1200);
 setInterval(loadSysInfo,5000);
 </script>
 </body>

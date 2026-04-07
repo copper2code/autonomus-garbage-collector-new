@@ -27,7 +27,23 @@ class WebServer:
         def index():
             return render_template('dashboard.html')
 
-        # ─── Video Feed Stream ───
+        # ─── Single Frame Snapshot (primary — used by JS polling) ───
+        @self.app.route('/snapshot')
+        def snapshot():
+            """Returns a single JPEG frame. Dashboard polls this via JS.
+            Much more resilient than MJPEG streaming over WiFi."""
+            if not self.state.camera:
+                return '', 204  # No content
+
+            frame_bytes = self.state.camera.get_jpeg_bytes()
+            if not frame_bytes:
+                return '', 204
+
+            return Response(frame_bytes, mimetype='image/jpeg',
+                            headers={'Cache-Control': 'no-cache, no-store',
+                                     'Pragma': 'no-cache'})
+        
+        # ─── MJPEG Stream (fallback — kept for compatibility) ───
         @self.app.route('/video_feed')
         def video_feed():
             def generate_frames():
@@ -35,37 +51,11 @@ class WebServer:
                     if not self.state.camera:
                         time.sleep(0.5)
                         continue
-
-                    # Fast path: use pre-encoded JPEG from camera thread
-                    # Only use annotated path when there's something to show
-                    need_annotations = (
-                        self.state.mode != "manual" or
-                        self.state.training_status == "training" or
-                        self.state.bin_detected
-                    )
-
-                    if need_annotations:
-                        annotations = [f"Mode: {self.state.mode.upper()}"]
-                        if self.state.mode == "training":
-                            annotations.append(f"Recording: {self.state.last_car_command}")
-                            if self.state.data_recorder:
-                                annotations.append(f"Frames: {self.state.data_recorder.counter}")
-                        elif self.state.training_status == "training":
-                            annotations.append(f"TRAINING: {self.state.training_progress}%")
-                        elif self.state.mode == "autonomous":
-                            if self.state.bin_detected:
-                                annotations.append(f"BIN DETECTED ({self.state.bin_score:.2f})")
-                            else:
-                                annotations.append(f"Drive: {self.state.last_car_command}")
-                        frame_bytes = self.state.camera.get_mjpeg_frame(annotations=annotations)
-                    else:
-                        # Zero-copy path — just grab the pre-encoded JPEG
-                        frame_bytes = self.state.camera.get_jpeg_bytes()
-
+                    frame_bytes = self.state.camera.get_jpeg_bytes()
                     if frame_bytes:
                         yield (b'--frame\r\n'
                                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-                    time.sleep(0.1)  # ~10fps over WiFi — smooth enough, easy on Pi CPU
+                    time.sleep(0.1)
             return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
             
         # ─── Car Control ───
