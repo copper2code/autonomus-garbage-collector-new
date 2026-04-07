@@ -4,7 +4,10 @@
 #
 # Compatible with:
 #   - Raspberry Pi OS Bullseye (uses dhcpcd)
-#   - Raspberry Pi OS Bookworm (uses NetworkManager)
+#   - Raspberry Pi OS Bookworm / Trixie+ (uses NetworkManager)
+#
+# Detection is based on which tools are installed, not OS codename,
+# so this script is forward-compatible with future releases.
 #
 # Creates a WiFi hotspot so you can connect directly to the robot
 # and access the dashboard at http://192.168.4.1:5000
@@ -67,18 +70,20 @@ fi
 ok "Inputs validated"
 
 # ═══════════════════════════════════════════════════════════════════
-# Detect OS version (Bullseye vs Bookworm)
+# Detect network manager (tool-based, not codename-based)
 # ═══════════════════════════════════════════════════════════════════
 OS_VERSION=$(grep -oP '(?<=VERSION_CODENAME=)\w+' /etc/os-release 2>/dev/null || echo "unknown")
 echo ""
 echo "Detected OS: Raspberry Pi OS $OS_VERSION"
 
 USE_NM=false
-if [ "$OS_VERSION" = "bookworm" ]; then
+if command -v nmcli &>/dev/null; then
     USE_NM=true
-    warn "Bookworm detected — using NetworkManager (not dhcpcd)"
+    ok "NetworkManager detected (nmcli available) — using NM method"
+elif command -v dhcpcd &>/dev/null; then
+    ok "dhcpcd detected — using dhcpcd method"
 else
-    ok "Bullseye or older detected — using dhcpcd"
+    die "Neither NetworkManager (nmcli) nor dhcpcd found. Cannot configure static IP."
 fi
 
 # ═══════════════════════════════════════════════════════════════════
@@ -132,10 +137,7 @@ EOF
     ip link set "$WLAN_IFACE" up
 
 else
-    # ── Bullseye: dhcpcd ─────────────────────────────────────────
-    if ! command -v dhcpcd &>/dev/null; then
-        die "dhcpcd not found and this is not Bookworm. Cannot configure static IP."
-    fi
+    # ── Bullseye / dhcpcd systems ─────────────────────────────────
 
     # Remove any previous block we added
     sed -i '/# GarbageBot Hotspot Config/,/# End GarbageBot/d' /etc/dhcpcd.conf

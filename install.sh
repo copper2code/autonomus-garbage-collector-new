@@ -85,17 +85,16 @@ apt-get install -y \
     raspi-config \
     curl
 
-# ── Bookworm-specific package names ─────────────────────────────
-if [ "$OS_VERSION" = "bookworm" ]; then
-    # libatlas dropped → libopenblas (already installed above)
-    # libgpiod2 → libgpiod2t64 (t64 ABI transition in Bookworm)
-    # libraspberrypi-bin → split into raspi-utils-core + raspi-utils-dt
+# ── Post-Bullseye vs Bullseye package variants ──────────────────
+# Detect based on tools, not codename (handles Trixie, Bookworm, future)
+if command -v nmcli &>/dev/null; then
+    # Bookworm / Trixie / future — uses NetworkManager, new package names
     apt-get install -y \
         libgpiod2t64 \
         raspi-utils-core raspi-utils-dt 2>/dev/null || \
         warn "Some raspi-utils packages unavailable — raspi-config will still work"
 else
-    # Bullseye and older use original names
+    # Bullseye and older — uses dhcpcd, legacy package names
     apt-get install -y \
         libatlas-base-dev \
         libgpiod2 \
