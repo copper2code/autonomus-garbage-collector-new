@@ -160,7 +160,10 @@ else
 fi
 
 source "$VENV_DIR/bin/activate"
-pip install -U pip setuptools wheel --quiet
+
+# Pin setuptools <82 — torch requires setuptools<82, versions >=82 break the install
+pip install -U pip wheel --quiet
+pip install "setuptools<82" --quiet
 ok "Virtual environment ready at $VENV_DIR"
 
 # ═══════════════════════════════════════════════════════════════════
@@ -168,17 +171,21 @@ ok "Virtual environment ready at $VENV_DIR"
 # ═══════════════════════════════════════════════════════════════════
 echo ""
 echo "━━━ Step 4/9: Installing PyTorch for Raspberry Pi 4B (ARM64) ━━━"
-echo "    This may take 5–10 minutes on first install..."
+echo "    This may take 5-10 minutes on first install..."
 
-# Use PyTorch 2.1.0 — tested & stable on Pi 4B aarch64 with CPU-only
+# torch==2.1.0 does not exist for aarch64 on PyTorch's CPU index.
+# Earliest available aarch64 CPU wheel is 2.6.0.
+# Install latest stable from the index — resolves automatically.
 pip install \
-    torch==2.1.0 \
-    torchvision==0.16.0 \
+    torch \
+    torchvision \
     --index-url https://download.pytorch.org/whl/cpu \
     --prefer-binary \
     --quiet
 
-ok "PyTorch 2.1.0 installed (CPU, aarch64)"
+# Capture installed version for the summary banner
+TORCH_VERSION=$(python3 -c "import torch; print(torch.__version__)" 2>/dev/null || echo "unknown")
+ok "PyTorch $TORCH_VERSION installed (CPU, aarch64)"
 
 # ═══════════════════════════════════════════════════════════════════
 # STEP 5 — Python Requirements
@@ -297,7 +304,7 @@ printf "║  WiFi Network:  %-35s║\n" "$SSID"
 printf "║  WiFi Password: %-35s║\n" "$PASSWORD"
 echo "║  Dashboard URL: http://192.168.4.1:5000          ║"
 echo "║                                                  ║"
-echo "║  PyTorch:       2.1.0 (CPU, aarch64)             ║"
+printf "║  PyTorch:       %-35s║\n" "$TORCH_VERSION (CPU, aarch64)"
 echo "║  Serial UART:   Enabled (for Arduinos)           ║"
 echo "║  GPU RAM:       16 MB (max RAM for inference)    ║"
 echo "║                                                  ║"
