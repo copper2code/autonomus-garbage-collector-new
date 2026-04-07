@@ -32,31 +32,40 @@ class WebServer:
         def video_feed():
             def generate_frames():
                 while True:
-                    annotations = [
-                        f"Mode: {self.state.mode.upper()}",
-                    ]
+                    if not self.state.camera:
+                        time.sleep(0.5)
+                        continue
 
-                    if self.state.mode == "training":
-                        annotations.append(f"Recording: {self.state.last_car_command}")
-                        if self.state.data_recorder:
-                            annotations.append(f"Frames: {self.state.data_recorder.counter}")
-                    elif self.state.training_status == "training":
-                        annotations.append(f"TRAINING IN PROGRESS: {self.state.training_progress}%")
-                    elif self.state.training_status == "done":
-                        annotations.append("TRAINING COMPLETE!")
-                    elif self.state.mode == "autonomous":
-                        if self.state.bin_detected:
-                            annotations.append(f"BIN DETECTED ({self.state.bin_score:.2f})")
-                            annotations.append("APPROACHING/COLLECTING...")
-                        else:
-                            annotations.append(f"Auto-Drive: {self.state.last_car_command}")
-                    
-                    if self.state.camera:
+                    # Fast path: use pre-encoded JPEG from camera thread
+                    # Only use annotated path when there's something to show
+                    need_annotations = (
+                        self.state.mode != "manual" or
+                        self.state.training_status == "training" or
+                        self.state.bin_detected
+                    )
+
+                    if need_annotations:
+                        annotations = [f"Mode: {self.state.mode.upper()}"]
+                        if self.state.mode == "training":
+                            annotations.append(f"Recording: {self.state.last_car_command}")
+                            if self.state.data_recorder:
+                                annotations.append(f"Frames: {self.state.data_recorder.counter}")
+                        elif self.state.training_status == "training":
+                            annotations.append(f"TRAINING: {self.state.training_progress}%")
+                        elif self.state.mode == "autonomous":
+                            if self.state.bin_detected:
+                                annotations.append(f"BIN DETECTED ({self.state.bin_score:.2f})")
+                            else:
+                                annotations.append(f"Drive: {self.state.last_car_command}")
                         frame_bytes = self.state.camera.get_mjpeg_frame(annotations=annotations)
-                        if frame_bytes:
-                            yield (b'--frame\r\n'
-                                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-                    time.sleep(0.05)  # ~20fps, prevent CPU from pegging on Pi
+                    else:
+                        # Zero-copy path — just grab the pre-encoded JPEG
+                        frame_bytes = self.state.camera.get_jpeg_bytes()
+
+                    if frame_bytes:
+                        yield (b'--frame\r\n'
+                               b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+                    time.sleep(0.1)  # ~10fps over WiFi — smooth enough, easy on Pi CPU
             return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
             
         # ─── Car Control ───
@@ -256,7 +265,8 @@ class WebServer:
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.ERROR)
         logger.info(f"Starting Web Server on {config.FLASK_HOST}:{config.FLASK_PORT}")
-        self.app.run(host=config.FLASK_HOST, port=config.FLASK_PORT, debug=False, use_reloader=False)
+        self.app.run(host=config.FLASK_HOST, port=config.FLASK_PORT, 
+                     debug=False, use_reloader=False, threaded=True)
 
     def start_background(self):
         t = threading.Thread(target=self.run, daemon=True)
