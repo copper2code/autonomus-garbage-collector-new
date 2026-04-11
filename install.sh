@@ -227,8 +227,8 @@ ok "Directories created"
 echo ""
 echo "━━━ Step 7/9: Connecting to Home Wi-Fi ━━━"
 
-SSID="YOUR_HOME_WIFI_NAME"
-PASSWORD="YOUR_HOME_WIFI_PASSWORD"
+SSID="hotspot"
+PASSWORD="pass1660"
 COUNTRY="IN"
 if [ -f "$SCRIPT_DIR/user_settings.json" ]; then
     SSID=$(python3 -c \
