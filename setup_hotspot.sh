@@ -119,6 +119,14 @@ if $USE_NM; then
     # Clean previous dnsmasq to start fresh
     systemctl stop dnsmasq 2>/dev/null || true
     
+    # FIX PASSWORD LOOP: Disable Wi-Fi Power Management 
+    # The Pi drops AP connections constantly causing a password loop
+    # when Ethernet is un-plugged and it tries to sleep the Wi-Fi.
+    cat > /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf <<EOF
+[connection]
+wifi.powersave = 2
+EOF
+
     # We will use NM for the Access Point, but standalone dnsmasq for DHCP
     # This prevents NetworkManager from "flapping" and breaking passwords
     systemctl stop hostapd 2>/dev/null || true
@@ -140,9 +148,10 @@ if $USE_NM; then
         wifi.mode ap \
         wifi.band bg \
         wifi.channel 1 \
-        wifi-sec.key-mgmt wpa-psk \
-        wifi-sec.psk "$PASSWORD" \
-        wifi-sec.pmf 1 \
+        wifi.powersave 2 \
+        802-11-wireless-security.key-mgmt wpa-psk \
+        802-11-wireless-security.psk "$PASSWORD" \
+        802-11-wireless-security.pmf 1 \
         ipv4.method manual \
         ipv4.addresses "$AP_IP/24" \
         ipv6.method ignore \
