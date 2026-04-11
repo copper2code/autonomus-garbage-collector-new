@@ -12,15 +12,14 @@
 # Creates a WiFi hotspot so you can connect directly to the robot
 # and access the dashboard at http://192.168.4.1:5000
 #
-# Usage:  sudo ./setup_hotspot.sh [SSID] [PASSWORD] [COUNTRY_CODE]
-# Default: SSID=GarbageBot  PASSWORD=robot1234  COUNTRY=IN
+# Usage:  sudo ./setup_hotspot.sh [SSID] [COUNTRY_CODE]
+# Default: SSID=GarbageBot  COUNTRY=IN
 # ═══════════════════════════════════════════════════════════════════
 
 set -e
 
 SSID="${1:-GarbageBot}"
-PASSWORD="${2:-robot1234}"
-COUNTRY="${3:-IN}"
+COUNTRY="${2:-IN}"
 AP_IP="192.168.4.1"
 DHCP_RANGE_START="192.168.4.10"
 DHCP_RANGE_END="192.168.4.50"
@@ -37,7 +36,7 @@ echo "════════════════════════�
 echo "  🤖 Garbage Collector — WiFi Hotspot Setup"
 echo "══════════════════════════════════════════"
 echo "  SSID:        $SSID"
-echo "  Password:    $PASSWORD"
+echo "  Security:    Open (No Password)"
 echo "  IP:          $AP_IP"
 echo "  Interface:   $WLAN_IFACE"
 echo "  Country:     $COUNTRY"
@@ -51,11 +50,7 @@ echo ""
 # Input Validation
 # ═══════════════════════════════════════════════════════════════════
 
-PW_LEN=${#PASSWORD}
-if [ "$PW_LEN" -lt 8 ] || [ "$PW_LEN" -gt 63 ]; then
-    die "WiFi password must be 8–63 characters (current: $PW_LEN). WPA2 requirement."
-fi
-
+# Security: Open Hotspot (No Password)
 SSID_LEN=${#SSID}
 if [ "$SSID_LEN" -lt 1 ] || [ "$SSID_LEN" -gt 32 ]; then
     die "SSID must be 1–32 characters (current: $SSID_LEN)."
@@ -137,8 +132,6 @@ if $USE_NM; then
         wifi.mode ap \
         wifi.band bg \
         wifi.channel 6 \
-        wifi-sec.key-mgmt wpa-psk \
-        wifi-sec.psk "$PASSWORD" \
         ipv4.method shared \
         ipv4.addresses "$AP_IP/24" \
         connection.autoconnect-priority 100
@@ -215,7 +208,7 @@ EOF
     echo "━━━ Step 4/4: Configuring and starting Access Point ━━━"
 
     cat > /etc/hostapd/hostapd.conf << EOF
-# GarbageBot WiFi Access Point — Pi 4B
+# GarbageBot WiFi Access Point — Pi 4B (Open)
 interface=$WLAN_IFACE
 driver=nl80211
 ssid=$SSID
@@ -224,11 +217,6 @@ hw_mode=g
 ieee80211n=1
 channel=6
 auth_algs=1
-wpa=2
-wpa_passphrase=$PASSWORD
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=CCMP
-rsn_pairwise=CCMP
 macaddr_acl=0
 ignore_broadcast_ssid=0
 wmm_enabled=1
@@ -260,7 +248,7 @@ echo "════════════════════════�
 echo "  ✅ WiFi Hotspot configured!"
 echo ""
 printf "  Network:   %s\n" "$SSID"
-printf "  Password:  %s\n" "$PASSWORD"
+printf "  Security:  Open (No Password)\n"
 printf "  Country:   %s\n" "$COUNTRY"
 echo "  Dashboard: http://$AP_IP:5000"
 echo ""
