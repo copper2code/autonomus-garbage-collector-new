@@ -227,20 +227,24 @@ ok "Directories created"
 echo ""
 echo "━━━ Step 7/9: Setting up WiFi Hotspot ━━━"
 
-SSID="GarbageBot"
+SSID="hotspot"
+PASSWORD="pass1660"
 COUNTRY="IN"
 if [ -f "$SCRIPT_DIR/user_settings.json" ]; then
     SSID=$(python3 -c \
-        "import json; d=json.load(open('$SCRIPT_DIR/user_settings.json')); print(d.get('hotspot_ssid','GarbageBot'))" \
-        2>/dev/null || echo "GarbageBot")
+        "import json; d=json.load(open('$SCRIPT_DIR/user_settings.json')); print(d.get('hotspot_ssid','hotspot'))" \
+        2>/dev/null || echo "hotspot")
+    PASSWORD=$(python3 -c \
+        "import json; d=json.load(open('$SCRIPT_DIR/user_settings.json')); print(d.get('hotspot_password','pass1660'))" \
+        2>/dev/null || echo "pass1660")
     COUNTRY=$(python3 -c \
         "import json; d=json.load(open('$SCRIPT_DIR/user_settings.json')); print(d.get('hotspot_country','IN'))" \
         2>/dev/null || echo "IN")
 fi
 
 if [ -f "$SCRIPT_DIR/setup_hotspot.sh" ]; then
-    bash "$SCRIPT_DIR/setup_hotspot.sh" "$SSID" "$COUNTRY"
-    ok "WiFi Hotspot configured (SSID: $SSID, open/no password)"
+    bash "$SCRIPT_DIR/setup_hotspot.sh" "$SSID" "$PASSWORD" "$COUNTRY"
+    ok "WiFi Hotspot configured (SSID: $SSID)"
 else
     warn "setup_hotspot.sh not found — skipping hotspot configuration"
 fi

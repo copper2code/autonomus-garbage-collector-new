@@ -19,7 +19,8 @@
 set -e
 
 SSID="${1:-GarbageBot}"
-COUNTRY="${2:-IN}"
+PASSWORD="${2:-robot1234}"
+COUNTRY="${3:-IN}"
 AP_IP="192.168.4.1"
 DHCP_RANGE_START="192.168.4.10"
 DHCP_RANGE_END="192.168.4.50"
@@ -36,7 +37,7 @@ echo "════════════════════════�
 echo "  🤖 Garbage Collector — WiFi Hotspot Setup"
 echo "══════════════════════════════════════════"
 echo "  SSID:        $SSID"
-echo "  Security:    Open (No Password)"
+echo "  Password:    $PASSWORD"
 echo "  IP:          $AP_IP"
 echo "  Interface:   $WLAN_IFACE"
 echo "  Country:     $COUNTRY"
@@ -50,7 +51,10 @@ echo ""
 # Input Validation
 # ═══════════════════════════════════════════════════════════════════
 
-# Security: Open Hotspot (No Password)
+PW_LEN=${#PASSWORD}
+if [ "$PW_LEN" -lt 8 ] || [ "$PW_LEN" -gt 63 ]; then
+    die "WiFi password must be 8–63 characters (current: $PW_LEN). WPA2 requirement."
+fi
 SSID_LEN=${#SSID}
 if [ "$SSID_LEN" -lt 1 ] || [ "$SSID_LEN" -gt 32 ]; then
     die "SSID must be 1–32 characters (current: $SSID_LEN)."
@@ -132,6 +136,8 @@ if $USE_NM; then
         wifi.mode ap \
         wifi.band bg \
         wifi.channel 1 \
+        wifi-sec.key-mgmt wpa-psk \
+        wifi-sec.psk "$PASSWORD" \
         ipv4.method shared \
         ipv4.addresses "$AP_IP/24" \
         ipv6.method ignore \
@@ -217,6 +223,11 @@ country_code=$COUNTRY
 hw_mode=g
 channel=1
 auth_algs=1
+wpa=2
+wpa_passphrase=$PASSWORD
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=CCMP
+rsn_pairwise=CCMP
 macaddr_acl=0
 ignore_broadcast_ssid=0
 EOF
@@ -247,7 +258,7 @@ echo "════════════════════════�
 echo "  ✅ WiFi Hotspot configured!"
 echo ""
 printf "  Network:   %s\n" "$SSID"
-printf "  Security:  Open (No Password)\n"
+printf "  Password:  %s\n" "$PASSWORD"
 printf "  Country:   %s\n" "$COUNTRY"
 echo "  Dashboard: http://$AP_IP:5000"
 echo ""
