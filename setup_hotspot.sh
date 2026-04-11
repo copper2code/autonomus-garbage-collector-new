@@ -109,16 +109,20 @@ if $USE_NM; then
     # Much more reliable than manually configuring hostapd on NM systems.
     # ═══════════════════════════════════════════════════════════════
     echo ""
-    echo "━━━ Configuring hotspot via NetworkManager ━━━"
+    # Install dnsmasq for reliable standalone DHCP
+    apt-get update -qq
+    apt-get install -y dnsmasq
 
     # Remove any previous GarbageBot connection
     nmcli connection delete "$NM_CON_NAME" 2>/dev/null || true
 
-    # Also clean up any leftover hostapd/dnsmasq from failed attempts
+    # Clean previous dnsmasq to start fresh
+    systemctl stop dnsmasq 2>/dev/null || true
+    
+    # We will use NM for the Access Point, but standalone dnsmasq for DHCP
+    # This prevents NetworkManager from "flapping" and breaking passwords
     systemctl stop hostapd 2>/dev/null || true
     systemctl disable hostapd 2>/dev/null || true
-    systemctl stop dnsmasq 2>/dev/null || true
-    systemctl disable dnsmasq 2>/dev/null || true
     rm -f /etc/NetworkManager/conf.d/99-garbagebot-unmanaged.conf
 
     # Ensure NM manages wlan0
@@ -126,7 +130,7 @@ if $USE_NM; then
     sleep 2
 
     # Create a persistent WiFi AP connection via NetworkManager
-    # ipv4.method=shared enables NM's built-in DHCP server (dnsmasq)
+    # We use manual IP and let system dnsmasq handle DHCP to avoid uplink issues
     nmcli connection add \
         type wifi \
         ifname "$WLAN_IFACE" \
@@ -138,10 +142,31 @@ if $USE_NM; then
         wifi.channel 1 \
         wifi-sec.key-mgmt wpa-psk \
         wifi-sec.psk "$PASSWORD" \
-        ipv4.method shared \
+        wifi-sec.pmf 1 \
+        ipv4.method manual \
         ipv4.addresses "$AP_IP/24" \
         ipv6.method ignore \
         connection.autoconnect-priority 100
+
+    ok "NetworkManager AP connection '$NM_CON_NAME' created with manual routing"
+
+    # Configure our robust standalone DHCP server
+    echo "━━━ Configuring DHCP server (dnsmasq) ━━━"
+    [ -f /etc/dnsmasq.conf ] && [ ! -f /etc/dnsmasq.conf.orig ] && \
+        cp /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
+
+    cat > /etc/dnsmasq.conf << EOF
+# GarbageBot Standalone DHCP
+interface=$WLAN_IFACE
+bind-dynamic
+dhcp-range=$DHCP_RANGE_START,$DHCP_RANGE_END,255.255.255.0,24h
+domain=local
+address=/garbagebot.local/$AP_IP
+EOF
+    
+    systemctl enable dnsmasq
+    systemctl restart dnsmasq
+    ok "dnsmasq DHCP server active"
 
     ok "NetworkManager AP connection '$NM_CON_NAME' created"
 
