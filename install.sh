@@ -69,6 +69,31 @@ echo "━━━ Step 1/9: Installing system dependencies ━━━"
 OS_VERSION=$(grep -oP '(?<=VERSION_CODENAME=)\w+' /etc/os-release 2>/dev/null || echo "bullseye")
 echo "Detected OS: Raspberry Pi OS $OS_VERSION"
 
+# ═══════════════════════════════════════════════════════════════════
+# STEP 0.5 — Network Factory Reset & Wi-Fi Connection
+# ═══════════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 0.5/9: Factory Resetting Network & Connecting to Wi-Fi ━━━"
+
+SSID="hotspot"
+PASSWORD="pass1660"
+
+if [ -f "$SCRIPT_DIR/setup_hotspot.sh" ]; then
+    bash "$SCRIPT_DIR/setup_hotspot.sh" "$SSID" "$PASSWORD"
+    ok "Wi-Fi connection established. You should now have internet!"
+else
+    warn "setup_hotspot.sh not found, skipping network reset..."
+fi
+
+# ═══════════════════════════════════════════════════════════════════
+# STEP 1 — System Dependencies
+# ═══════════════════════════════════════════════════════════════════
+echo ""
+echo "━━━ Step 1/9: Installing system dependencies ━━━"
+
+# Ensure we have internet before apt-get update
+ping -c 1 8.8.8.8 >/dev/null 2>&1 || warn "Warning: No internet access detected. apt-get may fail."
+
 apt-get update -qq
 
 # ── Core packages (all Pi OS versions) ──────────────────────────
@@ -85,11 +110,7 @@ apt-get install -y \
     raspi-config \
     curl
 
-# hostapd+dnsmasq only needed on Bullseye (dhcpcd systems)
-# On NM systems (Bookworm/Trixie+), NetworkManager handles AP mode natively
-if ! command -v nmcli &>/dev/null; then
-    apt-get install -y hostapd dnsmasq
-fi
+# (Removed hostapd and dnsmasq from installation list entirely)
 
 # ── Post-Bullseye vs Bullseye package variants ──────────────────
 # Detect based on tools, not codename (handles Trixie, Bookworm, future)
@@ -222,32 +243,10 @@ sudo -u "$USER_NAME" mkdir -p \
 ok "Directories created"
 
 # ═══════════════════════════════════════════════════════════════════
-# STEP 7 — WiFi Hotspot
+# STEP 7 — Blank (Moved to Step 0.5)
 # ═══════════════════════════════════════════════════════════════════
 echo ""
-echo "━━━ Step 7/9: Connecting to Home Wi-Fi ━━━"
-
-SSID="hotspot"
-PASSWORD="pass1660"
-COUNTRY="IN"
-if [ -f "$SCRIPT_DIR/user_settings.json" ]; then
-    SSID=$(python3 -c \
-        "import json; d=json.load(open('$SCRIPT_DIR/user_settings.json')); print(d.get('hotspot_ssid','hotspot'))" \
-        2>/dev/null || echo "hotspot")
-    PASSWORD=$(python3 -c \
-        "import json; d=json.load(open('$SCRIPT_DIR/user_settings.json')); print(d.get('hotspot_password','pass1660'))" \
-        2>/dev/null || echo "pass1660")
-    COUNTRY=$(python3 -c \
-        "import json; d=json.load(open('$SCRIPT_DIR/user_settings.json')); print(d.get('hotspot_country','IN'))" \
-        2>/dev/null || echo "IN")
-fi
-
-if [ -f "$SCRIPT_DIR/setup_hotspot.sh" ]; then
-    bash "$SCRIPT_DIR/setup_hotspot.sh" "$SSID" "$PASSWORD"
-    ok "Wi-Fi setup scripted for: $SSID"
-else
-    warn "setup_hotspot.sh not found — skipping hotspot configuration"
-fi
+echo "━━━ Step 7/9: Skipping (Wi-Fi moved to beginning) ━━━"
 # ═══════════════════════════════════════════════════════════════════
 # STEP 8 — Systemd Auto-start Service
 # ═══════════════════════════════════════════════════════════════════

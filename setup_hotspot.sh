@@ -26,12 +26,22 @@ echo ""
 
 [ "$EUID" -ne 0 ] && die "Please run with sudo"
 
-# Stop any AP services
-systemctl stop dnsmasq 2>/dev/null || true
-systemctl disable dnsmasq 2>/dev/null || true
-systemctl stop hostapd 2>/dev/null || true
-systemctl disable hostapd 2>/dev/null || true
-rm -f /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf 2>/dev/null || true
+echo "━━━ Performing Network Factory Reset ━━━"
+# 1. PURGE HOSTAPD AND DNSMASQ completely!
+apt-get purge -y hostapd dnsmasq 2>/dev/null || true
+rm -rf /etc/hostapd /etc/dnsmasq.conf*
+rm -f /etc/NetworkManager/conf.d/default-wifi-powersave-on.conf
+rm -f /etc/NetworkManager/conf.d/99-garbagebot-unmanaged.conf
+
+# 2. CLEAR DHCPCD.CONF
+if [ -f /etc/dhcpcd.conf ]; then
+    sed -i '/# GarbageBot Hotspot Config/,/# End GarbageBot/d' /etc/dhcpcd.conf
+    systemctl restart dhcpcd 2>/dev/null || true
+fi
+
+# Ensure Wi-Fi is physically unblocked
+rfkill unblock wifi 2>/dev/null || true
+sleep 2
 
 if command -v nmcli &>/dev/null; then
     echo "━━━ Connecting via NetworkManager ━━━"
