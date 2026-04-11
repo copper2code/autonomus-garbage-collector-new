@@ -131,9 +131,10 @@ if $USE_NM; then
         ssid "$SSID" \
         wifi.mode ap \
         wifi.band bg \
-        wifi.channel 6 \
+        wifi.channel 1 \
         ipv4.method shared \
         ipv4.addresses "$AP_IP/24" \
+        ipv6.method disabled \
         connection.autoconnect-priority 100
 
     ok "NetworkManager AP connection '$NM_CON_NAME' created"
@@ -200,6 +201,7 @@ bind-interfaces
 dhcp-range=$DHCP_RANGE_START,$DHCP_RANGE_END,255.255.255.0,24h
 domain=local
 address=/garbagebot.local/$AP_IP
+address=/#/$AP_IP
 EOF
     ok "dnsmasq configured"
 
@@ -215,7 +217,7 @@ ssid=$SSID
 country_code=$COUNTRY
 hw_mode=g
 ieee80211n=1
-channel=6
+channel=1
 auth_algs=1
 macaddr_acl=0
 ignore_broadcast_ssid=0
