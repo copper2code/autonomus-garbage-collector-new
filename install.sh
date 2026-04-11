@@ -225,10 +225,10 @@ ok "Directories created"
 # STEP 7 — WiFi Hotspot
 # ═══════════════════════════════════════════════════════════════════
 echo ""
-echo "━━━ Step 7/9: Setting up WiFi Hotspot ━━━"
+echo "━━━ Step 7/9: Connecting to Home Wi-Fi ━━━"
 
-SSID="hotspot"
-PASSWORD="pass1660"
+SSID="YOUR_HOME_WIFI_NAME"
+PASSWORD="YOUR_HOME_WIFI_PASSWORD"
 COUNTRY="IN"
 if [ -f "$SCRIPT_DIR/user_settings.json" ]; then
     SSID=$(python3 -c \
@@ -243,8 +243,8 @@ if [ -f "$SCRIPT_DIR/user_settings.json" ]; then
 fi
 
 if [ -f "$SCRIPT_DIR/setup_hotspot.sh" ]; then
-    bash "$SCRIPT_DIR/setup_hotspot.sh" "$SSID" "$PASSWORD" "$COUNTRY"
-    ok "WiFi Hotspot configured (SSID: $SSID)"
+    bash "$SCRIPT_DIR/setup_hotspot.sh" "$SSID" "$PASSWORD"
+    ok "Wi-Fi setup scripted for: $SSID"
 else
     warn "setup_hotspot.sh not found — skipping hotspot configuration"
 fi
@@ -311,9 +311,8 @@ echo "╔═══════════════════════�
 echo "║         ✅ Installation Complete!                 ║"
 echo "╠══════════════════════════════════════════════════╣"
 echo "║                                                  ║"
-printf "║  WiFi Network:  %-35s║\n" "$SSID"
-printf "║  WiFi Password: %-35s║\n" "$PASSWORD"
-echo "║  Dashboard URL: http://192.168.4.1:5000          ║"
+printf "║  Network Mode:  %-35s║\n" "Home Wi-Fi Connection"
+echo "║  Dashboard URL: http://<PI_IP_ADDRESS>:5000      ║"
 echo "║                                                  ║"
 printf "║  PyTorch:       %-35s║\n" "$TORCH_VERSION (CPU, aarch64)"
 echo "║  Serial UART:   Enabled (for Arduinos)           ║"
