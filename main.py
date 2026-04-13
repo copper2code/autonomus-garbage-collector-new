@@ -43,6 +43,39 @@ class RobotState:
         # Inference results
         self.bin_detected = False
         self.bin_score = 0.0
+        self.bin_box = None
+        
+        # Arm Recording
+        self.recording_arm = False
+        self.recorded_arm_sequence = []
+        self.last_arm_cmd_time = 0.0
+
+
+def inference_worker(state):
+    """Background thread to run ML Inference so it doesn't block the main loop."""
+    logger.info("Starting inference background thread...")
+    while state.running:
+        if state.mode in ["autonomous", "follow-and-collect"]:
+            if not state.dual_inference:
+                time.sleep(0.5)
+                continue
+                
+            frame = state.camera.get_frame() if state.camera else None
+            if frame is None:
+                time.sleep(0.1)
+                continue
+                
+            driving_cmd, bin_det, bin_score, bin_box = state.dual_inference.predict(frame)
+            state.bin_detected = bin_det
+            state.bin_score = bin_score
+            state.bin_box = bin_box
+            state.last_car_command = driving_cmd
+            
+        else:
+            state.bin_detected = False
+            state.bin_score = 0.0
+            state.bin_box = None
+            time.sleep(0.1)
 
 
 def print_banner():
@@ -96,6 +129,10 @@ def main():
         state.dual_inference = None
     
     state.data_recorder = DataRecorder()
+    
+    # ── Start Inference Thread ──
+    inf_thread = threading.Thread(target=inference_worker, args=(state,), daemon=True)
+    inf_thread.start()
     
     # ── Start Web Dashboard ──
     state.web_server = WebServer(state)
@@ -152,46 +189,81 @@ def main():
             # AUTONOMOUS MODE
             # ---------------------------------------------------------
             elif state.mode == "autonomous":
-                if not state.dual_inference:
-                    time.sleep(0.1)
-                    continue
-                    
                 if state.arm and state.arm.sequence_running:
                     if state.motors:
                         state.motors.stop()
                     time.sleep(0.1)
                     continue
-                
-                # Run the dual PyTorch CNNs
-                driving_cmd, bin_is_visible, bin_conf = state.dual_inference.predict(frame.copy())
-                
-                state.bin_detected = bin_is_visible
-                state.bin_score = bin_conf
-                state.last_car_command = driving_cmd
 
                 # 1. High Priority: BIN DETECTED -> Collection Sequence
-                if bin_is_visible:
+                if state.bin_detected:
                     if state.motors:
                         state.motors.stop()
                     logger.info("GARBAGE BIN DETECTED. Executing Arm Collection Sequence.")
                     if state.arm:
                         state.arm.trigger_collection_sequence()
+                    time.sleep(1)
                     continue
                 
                 # 2. Lower Priority: DRIVING
-                if driving_cmd == "stop":
+                if state.last_car_command == "stop":
                     if state.motors:
                         state.motors.stop()
                 else:
                     if state.motors:
-                        state.motors.move(driving_cmd, config.DEFAULT_SPEED)
+                        state.motors.move(state.last_car_command, config.DEFAULT_SPEED)
+
+            # ---------------------------------------------------------
+            # FOLLOW-AND-COLLECT MODE
+            # ---------------------------------------------------------
+            elif state.mode == "follow-and-collect":
+                if state.arm and state.arm.sequence_running:
+                    if state.motors:
+                        state.motors.stop()
+                    time.sleep(0.1)
+                    continue
+
+                if state.bin_detected and state.bin_box is not None:
+                    x, y, w, h = state.bin_box
+                    center_x = x + w / 2
+
+                    # Stop & collect if bin is large enough
+                    # Stream resolution is 320x240
+                    if w * h > (320 * 240 * 0.3): # > 30% of standard stream
+                        if state.motors:
+                            state.motors.stop()
+                        logger.info("BIN IS CLOSE. Executing Arm Collection Sequence.")
+                        if state.arm:
+                            state.arm.trigger_collection_sequence()
+                        time.sleep(1)
+                        continue
+
+                    # Proportional Steer
+                    if center_x < (config.STREAM_WIDTH / 2) - 40:
+                        cmd = "left"
+                        speed = config.TURN_SPEED
+                    elif center_x > (config.STREAM_WIDTH / 2) + 40:
+                        cmd = "right"
+                        speed = config.TURN_SPEED
+                    else:
+                        cmd = "forward"
+                        speed = config.APPROACH_SPEED
+                else:
+                    cmd = "stop"
+                    speed = 0
+
+                if cmd == "stop":
+                    if state.motors:
+                        state.motors.stop()
+                else:
+                    if state.motors:
+                        state.motors.move(cmd, speed)
             
             # ---------------------------------------------------------
             # MANUAL MODE
             # ---------------------------------------------------------
             else:
-                state.bin_detected = False
-                state.bin_score = 0.0
+                pass
 
             time.sleep(0.05)  # ~20Hz Loop rate
             

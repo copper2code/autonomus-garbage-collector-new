@@ -93,8 +93,9 @@
         <div>
             <div class="c">
                 <div class="ct">📹 Camera</div>
-                <div class="vid">
+                <div class="vid" id="vid-container">
                     <img id="cam-img" alt="Camera">
+                    <div id="vid-box" style="display:none;position:absolute;border:3px solid var(--grn);pointer-events:none;"></div>
                     <div class="vid-badge" id="mode-badge">MANUAL</div>
                     <div class="vid-status" id="fps-counter">-- fps</div>
                 </div>
@@ -136,6 +137,13 @@
                 <div class="arm-label">Extend</div>
                 <div class="arm-row"><button class="btn" onclick="armCmd('ext',-50)">⟵</button><button class="btn" onclick="armCmd('ext',50)">⟶</button></div>
                 <button class="btn btn-w" style="width:100%;margin-top:4px" onclick="resetArm()">🔄 Home</button>
+                <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--brd)">
+                    <div class="arm-label">Record Sequence</div>
+                    <div class="arm-row">
+                        <button class="btn" id="btn-record" onclick="toggleRecordArm()">⏺️ Rec</button>
+                        <button class="btn btn-g" onclick="saveArmSeq()">💾 Save</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -147,6 +155,7 @@
             <button class="mbtn on" id="m-manual" onclick="setMode('manual')">🎮 Manual</button>
             <button class="mbtn training" id="m-training" onclick="setMode('training')">🎓 Train</button>
             <button class="mbtn" id="m-autonomous" onclick="setMode('autonomous')">🤖 Auto</button>
+            <button class="mbtn" id="m-follow-and-collect" onclick="setMode('follow-and-collect')" style="padding:8px 4px;font-size:0.7rem">🎯 Follow</button>
         </div>
     </div>
 </div>
@@ -317,7 +326,31 @@ async function setMode(m){
         updMode(m);
     }catch(e){log(`❌ MODE → ${m} — FAILED`);}
 }
-function updMode(m){['manual','training','autonomous'].forEach(x=>document.getElementById('m-'+x).classList.toggle('on',x===m));}
+function updMode(m){['manual','training','autonomous','follow-and-collect'].forEach(x=>document.getElementById('m-'+x).classList.toggle('on',x===m));}
+
+let isRecordingArm = false;
+async function toggleRecordArm() {
+    const action = isRecordingArm ? 'stop' : 'start';
+    try {
+        const r = await fetch(A+'/control/arm/record/'+action, {method:'POST'});
+        const d = await r.json();
+        toast(d.message, 'success');
+        if(action === 'start') {
+            log('⏺️ Started tracking arm sequence');
+        } else {
+            log(`⏹️ Stopped recording. Sequence acts: ${d.sequence ? d.sequence.length : 0}`);
+        }
+    } catch(e) { log('❌ ARM RECORD FAILED'); }
+}
+
+async function saveArmSeq() {
+    try {
+        const r = await fetch(A+'/control/arm/record/save', {method:'POST'});
+        const d = await r.json();
+        toast(d.message, r.ok ? 'success' : 'error');
+        if(r.ok) log('💾 Custom arm sequence saved');
+    } catch(e) { log('❌ ARM SAVE FAILED') }
+}
 
 // ═══ Settings ═══
 async function loadSettings(){
@@ -379,6 +412,33 @@ setInterval(async()=>{try{const r=await fetch(A+'/status');const d=await r.json(
     document.getElementById('d-mode').innerText=d.mode;
     document.getElementById('d-armb').innerText=d.arm_busy?'🔄 Busy':'Idle';
     const tgt=document.getElementById('d-tgt');tgt.innerText=d.bin_detected?'🎯 BIN':'None';tgt.style.color=d.bin_detected?'var(--grn)':'var(--mut)';
+    
+    // Recording state UI update
+    isRecordingArm = d.recording_arm;
+    const recBtn = document.getElementById('btn-record');
+    if (d.recording_arm) {
+        recBtn.innerText = '⏹️ Stop';
+        recBtn.classList.add('btn-d');
+    } else {
+        recBtn.innerText = '⏺️ Rec';
+        recBtn.classList.remove('btn-d');
+    }
+
+    // Bounding Box Overlay
+    const vBox = document.getElementById('vid-box');
+    if(d.bin_box) {
+        const ci = document.getElementById('cam-img');
+        // stream width/height are fixed configs: 320x240
+        const scaleX = ci.clientWidth / 320;
+        const scaleY = ci.clientHeight / 240;
+        vBox.style.display = 'block';
+        vBox.style.left = (d.bin_box[0] * scaleX) + 'px';
+        vBox.style.top = (d.bin_box[1] * scaleY) + 'px';
+        vBox.style.width = (d.bin_box[2] * scaleX) + 'px';
+        vBox.style.height = (d.bin_box[3] * scaleY) + 'px';
+    } else {
+        vBox.style.display = 'none';
+    }
     const b=document.getElementById('train-banner');
     if(d.training_status==='training'){b.style.display='block';document.getElementById('tp').innerText=d.training_progress}else b.style.display='none';
     if(d.notification){const n=document.getElementById('notif-box');n.style.display='block';n.innerText='✅ '+d.notification;setTimeout(()=>n.style.display='none',6000)}

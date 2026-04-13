@@ -87,8 +87,47 @@ class WebServer:
             
             if motor and value is not None and self.state.arm:
                 self.state.arm.execute_raw(motor, int(value))
+                
+                if self.state.recording_arm:
+                    current_time = time.time()
+                    if self.state.last_arm_cmd_time > 0:
+                        wait_ms = int((current_time - self.state.last_arm_cmd_time) * 1000)
+                        if wait_ms > 0:
+                            self.state.recorded_arm_sequence.append({"action": "wait", "ms": wait_ms})
+                    
+                    if motor == "clamp":
+                        self.state.recorded_arm_sequence.append({"action": "clamp", "angle": int(value)})
+                    else:
+                        direction = 1 if int(value) >= 0 else 0
+                        steps = abs(int(value))
+                        self.state.recorded_arm_sequence.append({"action": "arm", "motor": motor, "steps": steps, "dir": direction})
+                    
+                    self.state.last_arm_cmd_time = current_time
+
                 return jsonify({"status": "ok"})
             return jsonify({"status": "error", "message": "Invalid parameters or arm not connected"}), 400
+
+        # ─── Arm Recording ───
+        @self.app.route('/control/arm/record/start', methods=['POST'])
+        def arm_record_start():
+            self.state.recording_arm = True
+            self.state.recorded_arm_sequence = []
+            self.state.last_arm_cmd_time = 0.0
+            return jsonify({"status": "ok", "message": "Started recording arm sequence"})
+
+        @self.app.route('/control/arm/record/stop', methods=['POST'])
+        def arm_record_stop():
+            self.state.recording_arm = False
+            self.state.last_arm_cmd_time = 0.0
+            return jsonify({"status": "ok", "message": "Stopped recording", "sequence": self.state.recorded_arm_sequence})
+
+        @self.app.route('/control/arm/record/save', methods=['POST'])
+        def arm_record_save():
+            if not self.state.recorded_arm_sequence:
+                return jsonify({"status": "error", "message": "Sequence is empty"}), 400
+            runtime_cfg.update({"custom_arm_sequence": self.state.recorded_arm_sequence})
+            return jsonify({"status": "ok", "message": "Sequence saved successfully"})
+
 
         # ─── Arm Reset / Home Position ───
         @self.app.route('/control/arm/reset', methods=['POST'])
@@ -105,7 +144,7 @@ class WebServer:
             data = request.json
             new_mode = data.get('mode')
             
-            if new_mode not in ['manual', 'autonomous', 'training']:
+            if new_mode not in ['manual', 'autonomous', 'follow-and-collect', 'training']:
                 return jsonify({"status": "error", "message": "Invalid mode"}), 400
 
             # Handle transitions from Training
@@ -149,7 +188,9 @@ class WebServer:
                 "training_status": self.state.training_status,
                 "training_progress": self.state.training_progress,
                 "notification": notif,
-                "bin_detected": self.state.bin_detected,
+                "bin_detected": getattr(self.state, "bin_detected", False),
+                "bin_box": getattr(self.state, "bin_box", None),
+                "recording_arm": getattr(self.state, "recording_arm", False),
                 "arm_busy": self.state.arm.sequence_running if self.state.arm else False,
                 "driving_model_loaded": self.state.dual_inference.driving_loaded if self.state.dual_inference else False,
                 "bin_model_loaded": self.state.dual_inference.bin_loaded if self.state.dual_inference else False,

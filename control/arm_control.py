@@ -72,7 +72,9 @@ class ArmController:
         def runner():
             logger.info("Starting garbage collection sequence...")
             try:
-                for step in config.ARM_COLLECT_SEQUENCE:
+                from runtime_config import runtime_cfg
+                sequence = runtime_cfg.get("custom_arm_sequence", config.ARM_COLLECT_SEQUENCE)
+                for step in sequence:
                     action = step.get("action")
                     if action == "clamp":
                         self.set_clamp(step["angle"])

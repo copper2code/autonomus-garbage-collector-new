@@ -73,16 +73,31 @@ class DualModelInference:
     def predict(self, frame):
         """
         Runs both CNNs on the single frame.
-        Returns: (driving_command, bin_detected, bin_confidence)
+        Returns: (driving_command, bin_detected, bin_confidence, bin_box)
         """
         driving_cmd = "stop"
         bin_detected = False
         bin_conf = 0.0
+        bin_box = None
 
         if frame is None:
-            return driving_cmd, bin_detected, bin_conf
+            return driving_cmd, bin_detected, bin_conf, bin_box
 
         try:
+            # --- 1. OPEN-CV RED SQUARE DETECTION ---
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            mask1 = cv2.inRange(hsv, (0, 100, 50), (10, 255, 255))
+            mask2 = cv2.inRange(hsv, (160, 100, 50), (180, 255, 255))
+            red_mask = mask1 + mask2
+            
+            contours, _ = cv2.findContours(red_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if contours:
+                largest_contour = max(contours, key=cv2.contourArea)
+                if cv2.contourArea(largest_contour) > 500:
+                    x, y, w, h = cv2.boundingRect(largest_contour)
+                    bin_box = [int(x), int(y), int(w), int(h)]
+
+            # --- 2. NEURAL NETWORK VALIDATION ---
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             pil_img = PIL.Image.fromarray(rgb)
             img_tensor = self.transform(pil_img).unsqueeze(0).to(self.device)
@@ -95,8 +110,10 @@ class DualModelInference:
                     max_bin_prob, bin_idx = torch.max(bin_probs, 0)
                     
                     if bin_idx.item() != 0 and max_bin_prob.item() > config.BIN_DETECT_THRESHOLD:
-                        bin_detected = True
-                        bin_conf = max_bin_prob.item()
+                        # Enforce red square constraint (to prevent hallucinations)
+                        if bin_box is not None:
+                            bin_detected = True
+                            bin_conf = max_bin_prob.item()
 
                 # Dual Run: Driving prediction
                 if self.driving_loaded and not bin_detected:
@@ -108,4 +125,4 @@ class DualModelInference:
         except Exception as e:
             logger.error(f"Inference error: {e}")
 
-        return driving_cmd, bin_detected, bin_conf
+        return driving_cmd, bin_detected, bin_conf, bin_box
