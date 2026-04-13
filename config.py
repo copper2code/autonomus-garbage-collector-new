@@ -31,7 +31,7 @@ SERIAL_RECONNECT_DELAY = 3.0
 CAMERA_INDEX   = 0
 CAMERA_WIDTH   = 640       # Pi 4B realistic — was 1920
 CAMERA_HEIGHT  = 480       # Pi 4B realistic — was 1080
-CAMERA_FPS     = 15        # 15fps is comfortable for Pi 4B CPU load
+CAMERA_FPS     = 30        # Increased for smoother website feed
 
 STREAM_WIDTH   = 320
 STREAM_HEIGHT  = 240

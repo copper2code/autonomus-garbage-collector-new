@@ -243,11 +243,11 @@ function fetchFrame(){
             frameCount=0;lastFpsTime=now;
         }
         // Request next frame immediately after this one loads
-        setTimeout(fetchFrame,80); // ~12fps
+        setTimeout(fetchFrame,33); // ~30fps desired
     };
     img.onerror=()=>{
         // Auto-recover: just try again after a short delay
-        setTimeout(fetchFrame,500);
+        setTimeout(fetchFrame,200);
     };
     img.src=A+'/snapshot?t='+Date.now(); // cache-bust
 }
