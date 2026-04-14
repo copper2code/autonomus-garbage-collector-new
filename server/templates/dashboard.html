@@ -282,16 +282,13 @@ const cmap={'btn-up':'forward','btn-down':'backward','btn-left':'left','btn-righ
 for(const[id,act] of Object.entries(cmap)){
     const b=document.getElementById(id);
     b.addEventListener('mousedown',()=>carCmd(act));
-    b.addEventListener('mouseup',()=>carCmd('stop'));
     b.addEventListener('touchstart',e=>{e.preventDefault();carCmd(act);});
-    b.addEventListener('touchend',e=>{e.preventDefault();carCmd('stop');});
 }
 document.addEventListener('keydown',e=>{
     if(e.repeat||e.target.tagName==='INPUT')return;const k=e.key.toLowerCase();
     if(k==='w')carCmd('forward');if(k==='s')carCmd('backward');
     if(k==='a')carCmd('left');if(k==='d')carCmd('right');if(k===' ')carCmd('stop');
 });
-document.addEventListener('keyup',e=>{if('wasd'.includes(e.key.toLowerCase()))carCmd('stop');});
 
 async function carCmd(a){
     const spd=+document.getElementById('speed').value;

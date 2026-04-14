@@ -317,7 +317,7 @@ http://<RASPBERRY_PI_IP>:5000
 The system has three modes, switchable from the web dashboard:
 
 #### 1. Manual Mode (Default)
-You drive the car and control the arm directly from the web dashboard using keyboard (`W A S D`) or onscreen buttons.
+You drive the car and control the arm directly from the web dashboard using keyboard (`W A S D`) or onscreen buttons. **Hold-to-move**: The car will continue moving after you press a direction. You must explicitly press the **STOP** button (or the `Spacebar`) to halt the car.
 
 #### 2. Training Mode
 While in this mode, every camera frame is saved to disk labeled with your current steering input. This creates the training dataset for the Driving CNN.
@@ -393,6 +393,21 @@ The bin detector uses the same `CompactCNN` architecture. To train it:
 2. Organize them into `data/bin_training/background/` and `data/bin_training/garbage_bin/`
 3. Modify `ml/training_pipeline.py` to point to your bin data directory and update the classes list
 4. Run training and save to `models/garbage_bin.pth`
+
+### PC Simulation and Arm Testing
+
+To test target locking and the robotic arm without running the full Raspberry Pi dashboard, you can use the `pc_arm_test.py` script directly on your computer:
+
+```bash
+python pc_arm_test.py
+```
+
+This visualization includes a custom HUD:
+- A **center screen crosshair** (white) indicating straight-ahead view.
+- A **tracking target dot** (red) centered on the detected bin.
+- A **tracking line** (yellow) linking the center to the target.
+
+When the bin is perfectly locked via the CNN, this script will dynamically connect to the Arduino (if plugged into the PC via USB) and trigger the entire robotic arm grab-and-dump sequence automatically.
 
 ---
 
